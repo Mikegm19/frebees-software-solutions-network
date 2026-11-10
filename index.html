@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TrustLedger NG — Smart B2B Escrow & Tax Readiness</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <header>
+    <div class="nav-container">
+      <div class="brand">
+        <span>🛡️ TrustLedger</span>
+        <span class="brand-badge">SME Beta</span>
+      </div>
+      <span class="store-tag">Abuja Demo Store</span>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- 3 Clean Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="create">1. New Invoice</button>
+      <button class="tab-btn" data-tab="deals">2. Deals (<span id="deal-count">2</span>)</button>
+      <button class="tab-btn" data-tab="tax">3. Tax Ready</button>
+    </div>
+
+    <!-- SCREEN 1: CREATE INVOICE -->
+    <section id="tab-create" class="tab-content">
+      <div class="card">
+        <div class="card-title">Create Payment Link</div>
+        <div class="card-sub">Send a simple invoice via WhatsApp. Taxes & escrow happen quietly in the background.</div>
+
+        <div class="form-group">
+          <label for="buyerName">Customer / Business Name</label>
+          <input type="text" id="buyerName" placeholder="e.g., Banex Tech Supplies Ltd">
+        </div>
+
+        <div class="form-group">
+          <label for="itemDesc">What are you selling or supplying?</label>
+          <input type="text" id="itemDesc" placeholder="e.g., 15 Units of Dell Latitude Laptops">
+        </div>
+
+        <div class="form-group">
+          <label for="baseAmount">Total Base Price (₦)</label>
+          <input type="number" id="baseAmount" placeholder="e.g., 1200000">
+        </div>
+
+        <div class="form-group">
+          <label for="txCategory">Transaction Category (For Auto-Tax Rules)</label>
+          <select id="txCategory">
+            <option value="goods">Sale of Physical Goods (2% WHT if Corporate)</option>
+            <option value="services">Professional / Tech Services (5% WHT if Corporate)</option>
+          </select>
+        </div>
+
+        <!-- Toggle 1: Escrow -->
+        <div class="toggle-box">
+          <div class="toggle-info">
+            <h4>🔒 Protect with Paystack Escrow</h4>
+            <p>Buyer pays into a dedicated virtual account; released upon delivery.</p>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="escrowToggle" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <!-- Toggle 2: Tax Mode -->
+        <div class="toggle-box">
+          <div class="toggle-info">
+            <h4>🧾 Corporate Tax Invoice (VAT & WHT)</h4>
+            <p>Auto-adds 7.5% VAT and tracks WHT credit note for FIRS filing.</p>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="taxToggle">
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <!-- Live Calculation Preview -->
+        <div class="preview-box" id="calcPreview">
+          <div class="preview-row"><span>Base Price:</span> <span id="prevBase">₦0</span></div>
+          <div class="preview-row" id="vatRow" style="display:none;"><span>VAT (7.5%):</span> <span id="prevVat">+ ₦0</span></div>
+          <div class="preview-row" id="whtRow" style="display:none;"><span>Buyer WHT Deduction (<span id="whtRateLabel">2%</span>):</span> <span id="prevWht">- ₦0 (Tax Credit)</span></div>
+          <div class="preview-row total"><span>Buyer Pays Into Escrow:</span> <span id="prevTotal">₦0</span></div>
+        </div>
+
+        <button class="btn-primary" id="createInvoiceBtn">Generate Invoice & Payment Link</button>
+      </div>
+    </section>
+
+    <!-- SCREEN 2: ACTIVE DEALS & ESCROW STATE MACHINE -->
+    <section id="tab-deals" class="tab-content hidden">
+      <div class="card">
+        <div class="card-title">Active Deals & Payment Links</div>
+        <div class="card-sub">Click "Simulate Buyer View" on any deal to test the Paystack Escrow & Delivery flow.</div>
+        <div id="dealsList"></div>
+      </div>
+    </section>
+
+    <!-- SCREEN 3: PASSIVE TAX READINESS -->
+    <section id="tab-tax" class="tab-content hidden">
+      <div class="card">
+        <div class="card-title">FIRS / TaxPro Max Readiness</div>
+        <div class="card-sub">Automatically compiled from your completed deals. No manual accounting needed.</div>
+
+        <div class="status-banner">
+          <h4>✅ Small Company Exemption Status: ACTIVE</h4>
+          <p>Your annual turnover is under <strong>₦100,000,000</strong>. Under Nigerian tax law, your Company Income Tax (CIT) is <strong>0%</strong>, but you must file your mandatory Nil/Monthly return before the 21st.</p>
+        </div>
+
+        <div class="turnover-progress">
+          <div class="turnover-labels">
+            <span>Annual Turnover (Completed Deals)</span>
+            <span id="turnoverLabel">₦0 / ₦100M Limit</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="turnoverBar" style="width: 5%;"></div>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat-box">
+            <div class="stat-label">Completed Revenue</div>
+            <div class="stat-val" id="taxRev">₦0</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">VAT Collected (7.5%)</div>
+            <div class="stat-val" id="taxVat">₦0</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">WHT Credits Earned</div>
+            <div class="stat-val primary-text" id="taxWht">₦0</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Estimated CIT Due</div>
+            <div class="stat-val green-text">₦0 (Exempt)</div>
+          </div>
+        </div>
+
+        <button class="btn-primary" id="exportCsvBtn">📥 Download TaxPro Max CSV Schedule</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- BUYER VIEW / PAYSTACK SIMULATION MODAL -->
+  <div class="modal-overlay" id="buyerModal">
+    <div class="modal">
+      <div class="paystack-header">
+        <div>
+          <div class="modal-buyer-title" id="mBuyer">Buyer Checkout</div>
+          <div class="modal-item-sub" id="mItem">Item Name</div>
+        </div>
+        <span class="paystack-tag">Paystack Dedicated VA</span>
+      </div>
+
+      <div id="modalBodyContent"></div>
+
+      <button class="btn-outline full-width-btn" id="closeModalBtn">Close Buyer Preview</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
