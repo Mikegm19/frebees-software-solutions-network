@@ -3,162 +3,440 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TrustLedger NG — Smart B2B Escrow & Tax Readiness</title>
+  <title>freebee — B2B Escrow & Automated Tax Infrastructure</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-  <header>
-    <div class="nav-container">
-      <div class="brand">
-        <span>🛡️ TrustLedger</span>
-        <span class="brand-badge">SME Beta</span>
+  <!-- =========================================================
+       VIEW 0: STATUTORY ONBOARDING & LOGIN GATE
+       ========================================================= -->
+  <div id="auth-gate" class="auth-wrapper">
+    <div class="auth-AmbientGlow"></div>
+    <div class="auth-card glass-panel">
+      <div class="brand-header">
+        <div class="freebee-logo-mark">f</div>
+        <span class="freebee-wordmark">freebee</span>
       </div>
-      <span class="store-tag">Abuja Demo Store</span>
+      <p class="auth-subtitle">B2B Escrow Settlement & Automated FIRS Tax Ledger</p>
+
+      <form id="onboardingForm" autocomplete="off">
+        <div class="form-grid-2">
+          <div class="input-group">
+            <label for="regCompanyName">Registered Company Name *</label>
+            <input type="text" id="regCompanyName" required placeholder="e.g., Apex Industrial Ltd">
+          </div>
+          <div class="input-group">
+            <label for="regRcNumber">CAC RC / BN Number *</label>
+            <input type="text" id="regRcNumber" required placeholder="e.g., RC-1948201">
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="input-group">
+            <label for="regTin">FIRS Tax ID (TIN) *</label>
+            <input type="text" id="regTin" required placeholder="e.g., 23094819-0001">
+          </div>
+          <div class="input-group">
+            <label for="regTaxState">Tax Jurisdiction (State IRS) *</label>
+            <select id="regTaxState" required>
+              <option value="FIRS & FCT-IRS">FCT Abuja (FCT-IRS)</option>
+              <option value="FIRS & LIRS">Lagos State (LIRS)</option>
+              <option value="FIRS & RIRS">Rivers State (RIRS)</option>
+              <option value="FIRS & KIRS">Kano State (KIRS)</option>
+              <option value="FIRS & Other SIRS">Other State Board (SIRS)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="input-group">
+            <label for="regTurnoverTier">Statutory Turnover Classification *</label>
+            <select id="regTurnoverTier" required>
+              <option value="SMALL_EXEMPT">Small Company (&lt; ₦100M Turnover — 0% CIT)</option>
+              <option value="MEDIUM_STANDARD">Standard Corporate (&gt; ₦100M Turnover — 30% CIT)</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label for="regSector">Primary B2B Sector *</label>
+            <select id="regSector" required>
+              <option value="goods">Physical Goods, Wholesale & Equipment (2% WHT)</option>
+              <option value="services">Professional, Tech & Advisory Services (5% WHT)</option>
+              <option value="construction">Construction & Civil Contracts (5% WHT)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="input-group">
+            <label for="regBankName">Settlement Bank *</label>
+            <input type="text" id="regBankName" required placeholder="e.g., Zenith Bank / GTBank">
+          </div>
+          <div class="input-group">
+            <label for="regAccountNum">NUBAN Settlement Account *</label>
+            <input type="text" id="regAccountNum" maxlength="10" pattern="\d{10}" required placeholder="10-digit Account Number">
+          </div>
+        </div>
+
+        <button type="submit" class="btn-silver-primary full-width">
+          Initialize Corporate Workspace &rarr;
+        </button>
+      </form>
     </div>
-  </header>
+  </div>
 
-  <main class="container">
-    <!-- 3 Clean Tabs -->
-    <div class="tabs">
-      <button class="tab-btn active" data-tab="create">1. New Invoice</button>
-      <button class="tab-btn" data-tab="deals">2. Deals (<span id="deal-count">2</span>)</button>
-      <button class="tab-btn" data-tab="tax">3. Tax Ready</button>
-    </div>
+  <!-- =========================================================
+       MAIN WORKSPACE SHELL (SIDEBAR + CONTENT)
+       ========================================================= -->
+  <div id="app-workspace" class="workspace-shell hidden">
 
-    <!-- SCREEN 1: CREATE INVOICE -->
-    <section id="tab-create" class="tab-content">
-      <div class="card">
-        <div class="card-title">Create Payment Link</div>
-        <div class="card-sub">Send a simple invoice via WhatsApp. Taxes & escrow happen quietly in the background.</div>
-
-        <div class="form-group">
-          <label for="buyerName">Customer / Business Name</label>
-          <input type="text" id="buyerName" placeholder="e.g., Banex Tech Supplies Ltd">
+    <!-- Desktop Sidebar / Mobile Bottom Nav -->
+    <aside class="sidebar glass-panel">
+      <div class="sidebar-top">
+        <div class="brand-header compact">
+          <div class="freebee-logo-mark sm">f</div>
+          <span class="freebee-wordmark sm">freebee</span>
         </div>
 
-        <div class="form-group">
-          <label for="itemDesc">What are you selling or supplying?</label>
-          <input type="text" id="itemDesc" placeholder="e.g., 15 Units of Dell Latitude Laptops">
-        </div>
-
-        <div class="form-group">
-          <label for="baseAmount">Total Base Price (₦)</label>
-          <input type="number" id="baseAmount" placeholder="e.g., 1200000">
-        </div>
-
-        <div class="form-group">
-          <label for="txCategory">Transaction Category (For Auto-Tax Rules)</label>
-          <select id="txCategory">
-            <option value="goods">Sale of Physical Goods (2% WHT if Corporate)</option>
-            <option value="services">Professional / Tech Services (5% WHT if Corporate)</option>
-          </select>
-        </div>
-
-        <!-- Toggle 1: Escrow -->
-        <div class="toggle-box">
-          <div class="toggle-info">
-            <h4>🔒 Protect with Paystack Escrow</h4>
-            <p>Buyer pays into a dedicated virtual account; released upon delivery.</p>
-          </div>
-          <label class="switch">
-            <input type="checkbox" id="escrowToggle" checked>
-            <span class="slider"></span>
-          </label>
-        </div>
-
-        <!-- Toggle 2: Tax Mode -->
-        <div class="toggle-box">
-          <div class="toggle-info">
-            <h4>🧾 Corporate Tax Invoice (VAT & WHT)</h4>
-            <p>Auto-adds 7.5% VAT and tracks WHT credit note for FIRS filing.</p>
-          </div>
-          <label class="switch">
-            <input type="checkbox" id="taxToggle">
-            <span class="slider"></span>
-          </label>
-        </div>
-
-        <!-- Live Calculation Preview -->
-        <div class="preview-box" id="calcPreview">
-          <div class="preview-row"><span>Base Price:</span> <span id="prevBase">₦0</span></div>
-          <div class="preview-row" id="vatRow" style="display:none;"><span>VAT (7.5%):</span> <span id="prevVat">+ ₦0</span></div>
-          <div class="preview-row" id="whtRow" style="display:none;"><span>Buyer WHT Deduction (<span id="whtRateLabel">2%</span>):</span> <span id="prevWht">- ₦0 (Tax Credit)</span></div>
-          <div class="preview-row total"><span>Buyer Pays Into Escrow:</span> <span id="prevTotal">₦0</span></div>
-        </div>
-
-        <button class="btn-primary" id="createInvoiceBtn">Generate Invoice & Payment Link</button>
+        <nav class="nav-menu">
+          <button class="nav-item active" data-view="dashboard">
+            <span class="nav-icon">◈</span>
+            <span class="nav-text">Dashboard</span>
+          </button>
+          <button class="nav-item" data-view="create">
+            <span class="nav-icon">＋</span>
+            <span class="nav-text">New Contract</span>
+          </button>
+          <button class="nav-item" data-view="escrow">
+            <span class="nav-icon">⛨</span>
+            <span class="nav-text">Escrow Vault</span>
+            <span class="nav-counter" id="navEscrowCount">0</span>
+          </button>
+          <button class="nav-item" data-view="tax">
+            <span class="nav-icon">▤</span>
+            <span class="nav-text">Tax Ledger</span>
+          </button>
+        </nav>
       </div>
-    </section>
 
-    <!-- SCREEN 2: ACTIVE DEALS & ESCROW STATE MACHINE -->
-    <section id="tab-deals" class="tab-content hidden">
-      <div class="card">
-        <div class="card-title">Active Deals & Payment Links</div>
-        <div class="card-sub">Click "Simulate Buyer View" on any deal to test the Paystack Escrow & Delivery flow.</div>
-        <div id="dealsList"></div>
+      <div class="sidebar-footer">
+        <div class="company-chip">
+          <div class="chip-title" id="sidebarCompanyName">—</div>
+          <div class="chip-meta mono" id="sidebarTin">TIN: —</div>
+        </div>
+        <button id="resetProfileBtn" class="btn-ghost-danger" title="Switch or Edit Company Profile">
+          Switch Entity
+        </button>
       </div>
-    </section>
+    </aside>
 
-    <!-- SCREEN 3: PASSIVE TAX READINESS -->
-    <section id="tab-tax" class="tab-content hidden">
-      <div class="card">
-        <div class="card-title">FIRS / TaxPro Max Readiness</div>
-        <div class="card-sub">Automatically compiled from your completed deals. No manual accounting needed.</div>
+    <!-- Main Dynamic Viewport -->
+    <main class="main-viewport">
 
-        <div class="status-banner">
-          <h4>✅ Small Company Exemption Status: ACTIVE</h4>
-          <p>Your annual turnover is under <strong>₦100,000,000</strong>. Under Nigerian tax law, your Company Income Tax (CIT) is <strong>0%</strong>, but you must file your mandatory Nil/Monthly return before the 21st.</p>
-        </div>
-
-        <div class="turnover-progress">
-          <div class="turnover-labels">
-            <span>Annual Turnover (Completed Deals)</span>
-            <span id="turnoverLabel">₦0 / ₦100M Limit</span>
-          </div>
-          <div class="progress-bar">
-            <div class="progress-fill" id="turnoverBar" style="width: 5%;"></div>
-          </div>
-        </div>
-
-        <div class="stat-grid">
-          <div class="stat-box">
-            <div class="stat-label">Completed Revenue</div>
-            <div class="stat-val" id="taxRev">₦0</div>
-          </div>
-          <div class="stat-box">
-            <div class="stat-label">VAT Collected (7.5%)</div>
-            <div class="stat-val" id="taxVat">₦0</div>
-          </div>
-          <div class="stat-box">
-            <div class="stat-label">WHT Credits Earned</div>
-            <div class="stat-val primary-text" id="taxWht">₦0</div>
-          </div>
-          <div class="stat-box">
-            <div class="stat-label">Estimated CIT Due</div>
-            <div class="stat-val green-text">₦0 (Exempt)</div>
-          </div>
-        </div>
-
-        <button class="btn-primary" id="exportCsvBtn">📥 Download TaxPro Max CSV Schedule</button>
-      </div>
-    </section>
-  </main>
-
-  <!-- BUYER VIEW / PAYSTACK SIMULATION MODAL -->
-  <div class="modal-overlay" id="buyerModal">
-    <div class="modal">
-      <div class="paystack-header">
+      <!-- Top Status Header -->
+      <header class="viewport-header">
         <div>
-          <div class="modal-buyer-title" id="mBuyer">Buyer Checkout</div>
-          <div class="modal-item-sub" id="mItem">Item Name</div>
+          <h1 id="viewHeaderTitle">Executive Overview</h1>
+          <p id="viewHeaderSub" class="text-muted">Live B2B settlement pipeline and statutory tax position</p>
         </div>
-        <span class="paystack-tag">Paystack Dedicated VA</span>
+        <div class="header-badges">
+          <span class="pill-silver mono" id="headerRcBadge">RC: —</span>
+          <span class="pill-emerald" id="headerCitBadge">0% CIT Tier</span>
+        </div>
+      </header>
+
+      <!-- =====================================================
+           VIEW 1: EXECUTIVE DASHBOARD
+           ===================================================== -->
+      <section id="view-dashboard" class="view-section">
+        <div class="kpi-grid">
+          <div class="kpi-card glass-panel">
+            <span class="kpi-label">Active Escrow Pipeline</span>
+            <div class="kpi-value mono" id="kpiEscrowLocked">₦0</div>
+            <span class="kpi-foot" id="kpiEscrowCountLabel">0 contracts in transit</span>
+          </div>
+
+          <div class="kpi-card glass-panel">
+            <span class="kpi-label">Settled Gross Revenue</span>
+            <div class="kpi-value mono" id="kpiGrossRevenue">₦0</div>
+            <span class="kpi-foot">Verified completed deals</span>
+          </div>
+
+          <div class="kpi-card glass-panel">
+            <span class="kpi-label">Output VAT Liability (7.5%)</span>
+            <div class="kpi-value mono" id="kpiVatLiability">₦0</div>
+            <span class="kpi-foot">Remittable by 21st of month</span>
+          </div>
+
+          <div class="kpi-card glass-panel">
+            <span class="kpi-label">WHT Credit Notes Earned</span>
+            <div class="kpi-value mono silver-highlight" id="kpiWhtCredits">₦0</div>
+            <span class="kpi-foot">Deducted at source by buyers</span>
+          </div>
+        </div>
+
+        <div class="dashboard-split">
+          <!-- Recent Activity Feed -->
+          <div class="glass-panel panel-pad">
+            <div class="panel-head">
+              <h3>Recent Ledger Activity</h3>
+              <button class="btn-outline-sm" id="dashNewContractBtn">+ New Contract</button>
+            </div>
+            <div id="dashboardRecentList" class="empty-state-host"></div>
+          </div>
+
+          <!-- Statutory Entity Card -->
+          <div class="glass-panel panel-pad">
+            <div class="panel-head">
+              <h3>Corporate Filing Profile</h3>
+            </div>
+            <div class="entity-details-list">
+              <div class="entity-row">
+                <span>Legal Entity</span>
+                <strong id="profLegalName">—</strong>
+              </div>
+              <div class="entity-row">
+                <span>FIRS Tax ID (TIN)</span>
+                <strong class="mono" id="profTin">—</strong>
+              </div>
+              <div class="entity-row">
+                <span>Jurisdiction</span>
+                <strong id="profState">—</strong>
+              </div>
+              <div class="entity-row">
+                <span>Settlement Account</span>
+                <strong class="mono" id="profBank">—</strong>
+              </div>
+              <div class="entity-row">
+                <span>CIT Exemption Progress</span>
+                <strong class="mono" id="profLimitRatio">₦0 / ₦100M</strong>
+              </div>
+            </div>
+            <div class="progress-track">
+              <div class="progress-bar-silver" id="profTurnoverBar" style="width: 0%;"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =====================================================
+           VIEW 2: NEW CONTRACT & ESCROW GATEWAY BUILDER
+           ===================================================== -->
+      <section id="view-create" class="view-section hidden">
+        <div class="create-layout">
+          <div class="glass-panel panel-pad">
+            <h3>Contract & Counterparty Details</h3>
+            <p class="text-muted sm-gap">Generate a verifiable B2B invoice or protected escrow link.</p>
+
+            <form id="contractForm" autocomplete="off">
+              <div class="form-grid-2">
+                <div class="input-group">
+                  <label for="counterpartyName">Buyer / Counterparty Company *</label>
+                  <input type="text" id="counterpartyName" required placeholder="e.g., Sterling Agro Processing Ltd">
+                </div>
+                <div class="input-group">
+                  <label for="counterpartyTin">Buyer TIN or Phone/Email *</label>
+                  <input type="text" id="counterpartyTin" required placeholder="TIN or official contact">
+                </div>
+              </div>
+
+              <div class="input-group">
+                <label for="contractTitle">Contract Scope / Itemized Supply *</label>
+                <input type="text" id="contractTitle" required placeholder="e.g., Supply of 40 Units Industrial Inverters">
+              </div>
+
+              <div class="form-grid-2">
+                <div class="input-group">
+                  <label for="contractAmount">Gross Base Contract Value (₦) *</label>
+                  <input type="number" id="contractAmount" min="1" step="any" required placeholder="e.g., 2500000">
+                </div>
+                <div class="input-group">
+                  <label for="contractTaxType">Statutory WHT Category *</label>
+                  <select id="contractTaxType">
+                    <option value="goods">Supply of Goods / Equipment (2% WHT)</option>
+                    <option value="services">Corporate / Tech Services (5% WHT)</option>
+                    <option value="exempt">Direct Retail / Non-Withholding (0% WHT)</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Master Tax Toggle -->
+              <div class="control-row">
+                <div>
+                  <h4>Apply Statutory VAT (7.5%) & WHT Tagging</h4>
+                  <p>Computes output VAT and logs buyer WHT deduction credit note.</p>
+                </div>
+                <label class="cyber-switch">
+                  <input type="checkbox" id="applyTaxesToggle" checked>
+                  <span class="cyber-slider"></span>
+                </label>
+              </div>
+
+              <!-- Master Escrow Button / Toggle that Unlocks Preceding Functions -->
+              <div class="control-row highlight-row">
+                <div>
+                  <h4>⛨ Enable Escrow Protection Vault</h4>
+                  <p>Unlocks milestone conditions, inspection timers, and virtual account lock.</p>
+                </div>
+                <label class="cyber-switch">
+                  <input type="checkbox" id="enableEscrowToggle">
+                  <span class="cyber-slider"></span>
+                </label>
+              </div>
+
+              <!-- PRECEDING ESCROW FUNCTIONS DRAWER (Revealed when Escrow is enabled) -->
+              <div id="escrowFunctionsDrawer" class="escrow-drawer hidden">
+                <div class="drawer-header">
+                  <span class="mono">⛨ ESCROW PROTOCOL PARAMETERS</span>
+                </div>
+                <div class="form-grid-2">
+                  <div class="input-group">
+                    <label for="escrowWindow">Buyer Inspection Window</label>
+                    <select id="escrowWindow">
+                      <option value="24 Hours">24 Hours Post-Delivery</option>
+                      <option value="48 Hours" selected>48 Hours Post-Delivery</option>
+                      <option value="7 Days">7 Days (Heavy EquipmentTest)</option>
+                    </select>
+                  </div>
+                  <div class="input-group">
+                    <label for="escrowCondition">Payout Release Trigger</label>
+                    <select id="escrowCondition">
+                      <option value="Dual Sign-off (Waybill + Buyer OTP)">Waybill Upload + Buyer Confirmation</option>
+                      <option value="Buyer Confirmation Only">Buyer Inspection Sign-Off</option>
+                      <option value="Auto-Release After Inspection Window">Auto-Release on Timer Expiry</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-grid-2">
+                  <div class="input-group">
+                    <label for="escrowFeeSplit">Escrow Platform Fee Allocation (1.5%)</label>
+                    <select id="escrowFeeSplit">
+                      <option value="50_50">Split 50 / 50 (Seller & Buyer)</option>
+                      <option value="BUYER">100% Paid by Buyer</option>
+                      <option value="SELLER">100% Absorbed by Seller</option>
+                    </select>
+                  </div>
+                  <div class="input-group">
+                    <label for="escrowWaybillRef">Logistics / Waybill Tracking Rules</label>
+                    <input type="text" id="escrowWaybillRef" placeholder="e.g., Require signed delivery note">
+                  </div>
+                </div>
+              </div>
+
+              <button type="submit" class="btn-silver-primary full-width">
+                Deploy Contract & Generate Settlement Link
+              </button>
+            </form>
+          </div>
+
+          <!-- Live Telemetry Calculation Preview -->
+          <div class="glass-panel panel-pad preview-panel">
+            <h3>Live Settlement Telemetry</h3>
+            <p class="text-muted sm-gap">Real-time breakdown of funds flow and tax ledger entries.</p>
+
+            <div class="telemetry-list mono">
+              <div class="t-row">
+                <span>Base Contract Value</span>
+                <span id="prevBaseVal">₦0</span>
+              </div>
+              <div class="t-row">
+                <span>Output VAT (7.5%)</span>
+                <span id="prevVatVal">+ ₦0</span>
+              </div>
+              <div class="t-row">
+                <span>WHT Credit Retained by Buyer</span>
+                <span id="prevWhtVal">- ₦0</span>
+              </div>
+              <div class="t-row" id="prevEscrowFeeRow" style="display:none;">
+                <span>Escrow Protection Fee (1.5%)</span>
+                <span id="prevEscrowFeeVal">₦0</span>
+              </div>
+              <div class="t-row total">
+                <span>Net Payable by Buyer</span>
+                <span id="prevNetPayable">₦0</span>
+              </div>
+            </div>
+
+            <div class="mode-indicator" id="previewModeBox">
+              <div class="mode-title" id="previewModeTitle">DIRECT INVOICE MODE</div>
+              <p id="previewModeDesc">Funds settle directly upon payment without inspection lock.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =====================================================
+           VIEW 3: ESCROW VAULT & STATE MACHINE
+           ===================================================== -->
+      <section id="view-escrow" class="view-section hidden">
+        <div class="glass-panel panel-pad">
+          <div class="panel-head">
+            <div>
+              <h3>Escrow Vault & Active Contracts</h3>
+              <p class="text-muted">Manage Paystack virtual account funding, waybill dispatch, and buyer inspection release.</p>
+            </div>
+          </div>
+          <div id="escrowVaultList" class="vault-list"></div>
+        </div>
+      </section>
+
+      <!-- =====================================================
+           VIEW 4: FIRS TAX ENGINE & LEDGER
+           ===================================================== -->
+      <section id="view-tax" class="view-section hidden">
+        <div class="glass-panel panel-pad">
+          <div class="panel-head">
+            <div>
+              <h3>Statutory FIRS / TaxPro Max Ledger</h3>
+              <p class="text-muted">Compiled strictly from settled contracts. Zero manual data entry required.</p>
+            </div>
+            <button id="downloadTaxCsvBtn" class="btn-silver-primary">
+              &darr; Export FIRS Schedule (.CSV)
+            </button>
+          </div>
+
+          <div class="tax-table-wrapper">
+            <table class="cyber-table">
+              <thead>
+                <tr>
+                  <th>Contract ID</th>
+                  <th>Date</th>
+                  <th>Counterparty</th>
+                  <th>Gross Base</th>
+                  <th>Output VAT (7.5%)</th>
+                  <th>WHT Credit</th>
+                  <th>Net Settled</th>
+                </tr>
+              </thead>
+              <tbody id="taxLedgerTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- =========================================================
+       INTERACTIVE ESCROW COMMAND MODAL (PAYSTACK + MILESTONES)
+       ========================================================= -->
+  <div id="escrowModal" class="modal-backdrop hidden">
+    <div class="modal-card glass-panel">
+      <div class="modal-top">
+        <div>
+          <span class="mono text-muted" id="modalContractId">CNT-0000</span>
+          <h3 id="modalContractTitle">Contract Title</h3>
+        </div>
+        <button id="closeModalBtn" class="btn-close">&times;</button>
       </div>
 
-      <div id="modalBodyContent"></div>
+      <!-- 4-Step Progress Stepper -->
+      <div class="stepper" id="modalStepper"></div>
 
-      <button class="btn-outline full-width-btn" id="closeModalBtn">Close Buyer Preview</button>
+      <div id="modalDynamicBody" class="modal-body-content"></div>
     </div>
   </div>
 
