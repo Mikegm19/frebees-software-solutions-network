@@ -42,7 +42,7 @@ body {
 }
 
 /* =========================================================
-   THE "freebee" FACEBOOK-INSPIRED METALLIC SILVER LOGO
+   THE "freebee" FACEBOOK-INSPIRED SILVER LOGO
    ========================================================= */
 .brand-header {
   display: flex;
@@ -66,10 +66,10 @@ body {
   font-size: 2.35rem;
   line-height: 0.82;
   letter-spacing: -0.06em;
-  background-clip: padding-box;
   color: transparent;
   background-image: var(--silver-gradient);
   -webkit-background-clip: text;
+  background-clip: text;
   user-select: none;
   position: relative;
 }
@@ -89,6 +89,7 @@ body {
   letter-spacing: -0.055em;
   background: var(--silver-gradient);
   -webkit-background-clip: text;
+  background-clip: text;
   color: transparent;
   filter: drop-shadow(0 2px 10px rgba(255, 255, 255, 0.08));
 }
@@ -105,7 +106,7 @@ body {
 }
 
 /* =========================================================
-   GLASS PANELS & INPUT CONTROLS
+   GLASS PANELS & FORM CONTROLS
    ========================================================= */
 .glass-panel {
   background: var(--bg-elevated);
@@ -132,10 +133,78 @@ body {
 .text-muted {
   color: var(--text-secondary);
   font-size: 0.86rem;
+  line-height: 1.45;
 }
 
 .sm-gap {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+}
+
+.section-divider {
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  margin: 22px 0;
+}
+
+/* PDF Receipt Upload Zone */
+.pdf-upload-zone {
+  position: relative;
+  border: 1.5px dashed var(--border-specular);
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 14px;
+  padding: 22px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 14px;
+}
+
+.pdf-upload-zone:hover {
+  border-color: var(--accent-cyan);
+  background: rgba(56, 189, 248, 0.05);
+}
+
+.hidden-file-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.upload-icon {
+  font-size: 1.7rem;
+  margin-bottom: 6px;
+}
+
+.upload-title {
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.upload-sub {
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+}
+
+.pdf-banner {
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  margin-bottom: 14px;
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #e0f2fe;
+}
+
+/* Highlight for fields that need manual completion after PDF scan */
+.needs-manual-review {
+  border-color: var(--accent-amber) !important;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.18) !important;
 }
 
 /* Onboarding Gate */
@@ -174,8 +243,6 @@ label {
   display: block;
   font-size: 0.78rem;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
   color: var(--text-secondary);
   margin-bottom: 7px;
 }
@@ -406,8 +473,7 @@ select:focus {
 
 .kpi-label {
   font-size: 0.76rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-weight: 600;
   color: var(--text-secondary);
 }
 
@@ -466,7 +532,7 @@ select:focus {
 }
 
 /* =========================================================
-   NEW CONTRACT & PRECEDING ESCROW FUNCTIONS DRAWER
+   NEW SALE & ESCROW DRAWER
    ========================================================= */
 .create-layout {
   display: grid;
@@ -484,6 +550,7 @@ select:focus {
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
   margin-bottom: 12px;
+  gap: 12px;
 }
 
 .control-row.highlight-row {
@@ -550,12 +617,6 @@ select:focus {
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 16px;
-  animation: fadeIn 0.22s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 
 .drawer-header {
@@ -611,7 +672,7 @@ select:focus {
 }
 
 /* =========================================================
-   ESCROW VAULT CARDS & TABLE
+   ACTIVE DEALS & TAX TABLE
    ========================================================= */
 .vault-item {
   display: flex;
