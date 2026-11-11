@@ -1,3 +1,8 @@
+// Configure Mozilla PDF.js Worker
+if (window.pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+}
+
 const STORAGE_KEYS = {
   PROFILE: "freebee_company_profile_v1",
   CONTRACTS: "freebee_contracts_v1"
@@ -17,7 +22,7 @@ function saveState() {
 }
 
 /* =========================================================
-   1. ONBOARDING & AUTHENTICATION GATE
+   1. BUSINESS SETUP & LOGIN
    ========================================================= */
 function initApp() {
   const authGate = document.getElementById("auth-gate");
@@ -41,8 +46,7 @@ function populateCompanyIdentity() {
   document.getElementById("headerRcBadge").innerText = companyProfile.rc;
 
   const isExempt = companyProfile.tier === "SMALL_EXEMPT";
-  const citBadge = document.getElementById("headerCitBadge");
-  citBadge.innerText = isExempt ? "0% CIT (Small Company Tier)" : "30% CIT (Standard Corporate)";
+  document.getElementById("headerCitBadge").innerText = isExempt ? "0% CIT (Under ₦100M)" : "30% CIT (Standard)";
 
   document.getElementById("profLegalName").innerText = companyProfile.name;
   document.getElementById("profTin").innerText = companyProfile.tin;
@@ -52,7 +56,7 @@ function populateCompanyIdentity() {
 }
 
 /* =========================================================
-   2. NAVIGATION & VIEW ROUTER
+   2. NAVIGATION BETWEEN SCREENS
    ========================================================= */
 function switchView(viewKey) {
   document.querySelectorAll(".view-section").forEach(s => s.classList.add("hidden"));
@@ -65,10 +69,10 @@ function switchView(viewKey) {
   if (activeNav) activeNav.classList.add("active");
 
   const titles = {
-    dashboard: ["Executive Overview", "Live B2B settlement pipeline and statutory tax position"],
-    create: ["Deploy B2B Contract", "Configure escrow milestones, inspection windows, and statutory tax tags"],
-    escrow: ["Escrow Protection Vault", "Monitor Paystack virtual account locks, waybills, and inspection releases"],
-    tax: ["FIRS TaxPro Max Ledger", "Automated output VAT and Withholding Tax credit schedule"]
+    dashboard: ["Business Overview", "Track your pending escrow payments and monthly tax numbers in one place."],
+    create: ["Add Sale or Upload Receipt", "Scan a PDF bank receipt from your device or create a protected payment link."],
+    escrow: ["Active Deals & Escrow", "Track buyer payments, delivery waybills, and inspection releases."],
+    tax: ["Your FIRS Tax Records", "Download your clean spreadsheet ready for TaxPro Max."]
   };
 
   if (titles[viewKey]) {
@@ -80,22 +84,132 @@ function switchView(viewKey) {
 }
 
 /* =========================================================
-   3. LIVE CONTRACT & ESCROW TELEMETRY CALCULATOR
+   3. MOZILLA PDF.JS RECEIPT SCANNER (LOCAL DEVICE STORAGE)
+   ========================================================= */
+async function handlePdfUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const titleEl = document.getElementById("pdfUploadTitle");
+  const subEl = document.getElementById("pdfUploadSub");
+  const banner = document.getElementById("pdfStatusBanner");
+
+  titleEl.innerText = `Scanning "${file.name}"...`;
+  subEl.innerText = "Reading text from your PDF receipt...";
+  banner.classList.add("hidden");
+
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let rawText = "";
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      rawText += content.items.map(item => item.str).join(" ") + "\n";
+    }
+
+    // Clear previous amber highlights
+    ["counterpartyName", "counterpartyTin", "contractTitle", "contractAmount"].forEach(id => {
+      document.getElementById(id).classList.remove("needs-manual-review");
+    });
+
+    // 1. Extract Naira Amount (Matches ₦1,250,000.00, NGN 45,000, or Amount: 120,000)
+    const amountRegex = /(?:₦|NGN|Amount\s*[:\-]?|Total\s*[:\-]?)\s*([\d,]+(?:\.\d{2})?)/i;
+    const amountMatch = rawText.match(amountRegex);
+    let foundAmount = null;
+    if (amountMatch && amountMatch[1]) {
+      const parsed = parseFloat(amountMatch[1].replace(/,/g, ""));
+      if (parsed > 0) foundAmount = parsed;
+    }
+
+    // 2. Extract Sender / Customer Name
+    const partyRegex = /(?:Sender|From|Customer|Beneficiary|Payer|Account Name)\s*[:\-]?\s*([A-Za-z0-9\s.&\-]{3,35})/i;
+    const partyMatch = rawText.match(partyRegex);
+    const foundParty = partyMatch ? partyMatch[1].trim() : "";
+
+    // 3. Extract Narration / Description / Remark
+    const descRegex = /(?:Narration|Description|Remark|Remarks|Reference|Purpose)\s*[:\-]?\s*([A-Za-z0-9\s\/\-]{3,45})/i;
+    const descMatch = rawText.match(descRegex);
+    const foundDesc = descMatch ? descMatch[1].trim() : `Receipt: ${file.name.replace(/\.pdf$/i, "")}`;
+
+    // Populate fields or highlight in Amber if missing
+    const amountInput = document.getElementById("contractAmount");
+    const nameInput = document.getElementById("counterpartyName");
+    const tinInput = document.getElementById("counterpartyTin");
+    const titleInput = document.getElementById("contractTitle");
+
+    if (foundAmount) {
+      amountInput.value = foundAmount;
+    } else {
+      amountInput.classList.add("needs-manual-review");
+    }
+
+    if (foundParty) {
+      nameInput.value = foundParty;
+    } else {
+      nameInput.classList.add("needs-manual-review");
+    }
+
+    titleInput.value = foundDesc;
+
+    // Bank receipts rarely contain the buyer's FIRS TIN, so highlight it for quick manual entry
+    if (!tinInput.value) {
+      tinInput.classList.add("needs-manual-review");
+    }
+
+    // Automatically switch toggle to "Already Paid (Receipt Log Only)" since it's a receipt
+    document.getElementById("alreadyPaidToggle").checked = true;
+    document.getElementById("enableEscrowToggle").checked = false;
+
+    titleEl.innerText = `✓ Loaded: ${file.name}`;
+    subEl.innerText = "Tap here anytime to scan a different PDF file.";
+
+    banner.classList.remove("hidden");
+    if ( rawText.trim().length < 10 ) {
+      banner.innerHTML = `<strong>Note:</strong> This PDF looks like a scanned image or photo rather than a digital receipt. Please type in the highlighted yellow boxes below.`;
+    } else {
+      banner.innerHTML = `<strong>Receipt Scanned!</strong> We filled in what we found from the PDF. Please check the <span style="color:#fbbf24;font-weight:700;">yellow-highlighted boxes</span> (like Buyer TIN/Phone) and complete any missing info.`;
+    }
+
+    updateContractTelemetry();
+  } catch (err) {
+    console.error("PDF parse error:", err);
+    titleEl.innerText = "Could not read this PDF file";
+    subEl.innerText = "Please type the details manually below or try another digital PDF receipt.";
+  }
+}
+
+/* =========================================================
+   4. LIVE PAYMENT BREAKDOWN CALCULATOR
    ========================================================= */
 function updateContractTelemetry() {
   const base = parseFloat(document.getElementById("contractAmount").value) || 0;
   const taxType = document.getElementById("contractTaxType").value;
+  const alreadyPaid = document.getElementById("alreadyPaidToggle").checked;
   const applyTaxes = document.getElementById("applyTaxesToggle").checked;
-  const escrowEnabled = document.getElementById("enableEscrowToggle").checked;
+  const escrowToggle = document.getElementById("enableEscrowToggle");
+  const escrowMasterRow = document.getElementById("escrowMasterRow");
+  const submitBtn = document.getElementById("submitContractBtn");
+
+  // If sale is already paid (past receipt), disable Escrow option
+  if (alreadyPaid) {
+    escrowToggle.checked = false;
+    escrowMasterRow.style.opacity = "0.45";
+    escrowMasterRow.style.pointerEvents = "none";
+    submitBtn.innerText = "Save Receipt Directly to Tax Records \u2192";
+  } else {
+    escrowMasterRow.style.opacity = "1";
+    escrowMasterRow.style.pointerEvents = "auto";
+    submitBtn.innerText = "Create Invoice & Payment Link \u2192";
+  }
+
+  const escrowEnabled = escrowToggle.checked;
   const feeSplit = document.getElementById("escrowFeeSplit").value;
 
-  // Toggle preceding Escrow functions drawer
   const drawer = document.getElementById("escrowFunctionsDrawer");
-  if (escrowEnabled) {
-    drawer.classList.remove("hidden");
-  } else {
-    drawer.classList.add("hidden");
-  }
+  if (escrowEnabled) drawer.classList.remove("hidden");
+  else drawer.classList.add("hidden");
 
   const vat = applyTaxes ? Math.round(base * 0.075) : 0;
   const whtRate = taxType === "services" ? 0.05 : taxType === "goods" ? 0.02 : 0;
@@ -121,21 +235,26 @@ function updateContractTelemetry() {
 
   const modeTitle = document.getElementById("previewModeTitle");
   const modeDesc = document.getElementById("previewModeDesc");
-  if (escrowEnabled) {
+
+  if (alreadyPaid) {
+    modeTitle.innerText = "✓ PAST RECEIPT LOG";
+    modeTitle.style.color = "#34d399";
+    modeDesc.innerText = "This transaction will be marked as Completed and added straight to your FIRS Tax Records.";
+  } else if (escrowEnabled) {
     const windowVal = document.getElementById("escrowWindow").value;
     const condVal = document.getElementById("escrowCondition").value;
-    modeTitle.innerText = "⛨ ESCROW VAULT LOCK ACTIVE";
+    modeTitle.innerText = "⛨ ESCROW PROTECTION ON";
     modeTitle.style.color = "#38bdf8";
-    modeDesc.innerText = `Paystack Virtual Account locks funds. Release rule: ${condVal} (${windowVal} inspection window).`;
+    modeDesc.innerText = `Buyer pays into a safe virtual account. Release rule: ${condVal} (${windowVal} inspection).`;
   } else {
-    modeTitle.innerText = "DIRECT SETTLEMENT INVOICE";
+    modeTitle.innerText = "STANDARD INVOICE";
     modeTitle.style.color = "#94a3b8";
-    modeDesc.innerText = "Direct payment link without escrow lock. Settled immediately upon payment.";
+    modeDesc.innerText = "Creates a simple payment link without an escrow hold.";
   }
 }
 
 /* =========================================================
-   4. DEPLOY NEW CONTRACT
+   5. SAVE NEW SALE OR RECEIPT
    ========================================================= */
 function handleContractSubmit(e) {
   e.preventDefault();
@@ -144,6 +263,7 @@ function handleContractSubmit(e) {
   const title = document.getElementById("contractTitle").value.trim();
   const base = parseFloat(document.getElementById("contractAmount").value) || 0;
   const taxType = document.getElementById("contractTaxType").value;
+  const alreadyPaid = document.getElementById("alreadyPaidToggle").checked;
   const applyTaxes = document.getElementById("applyTaxesToggle").checked;
   const escrowEnabled = document.getElementById("enableEscrowToggle").checked;
 
@@ -155,7 +275,7 @@ function handleContractSubmit(e) {
   const buyerFee = escrowEnabled ? (feeSplit === "50_50" ? Math.round(totalEscrowFee / 2) : feeSplit === "BUYER" ? totalEscrowFee : 0) : 0;
 
   const newContract = {
-    id: "CNT-" + Math.floor(100000 + Math.random() * 900000),
+    id: "DEAL-" + Math.floor(100000 + Math.random() * 900000),
     createdAt: new Date().toISOString().split("T")[0],
     counterparty,
     counterpartyTin,
@@ -170,25 +290,33 @@ function handleContractSubmit(e) {
     releaseCondition: escrowEnabled ? document.getElementById("escrowCondition").value : "Immediate",
     waybillNote: escrowEnabled ? (document.getElementById("escrowWaybillRef").value.trim() || "Standard Waybill") : "Direct",
     virtualAccount: "99" + Math.floor(10000000 + Math.random() * 90000000),
-    waybillDispatchedId: null,
-    // States: AWAITING_DEPOSIT -> VAULT_LOCKED -> DISPATCHED_INSPECTION -> SETTLED
-    status: "AWAITING_DEPOSIT"
+    waybillDispatchedId: alreadyPaid ? "RECEIPT-VERIFIED" : null,
+    status: alreadyPaid ? "SETTLED" : "AWAITING_DEPOSIT"
   };
 
   contracts.unshift(newContract);
   saveState();
+
+  // Reset form & UI highlights
   e.target.reset();
+  ["counterpartyName", "counterpartyTin", "contractTitle", "contractAmount"].forEach(id => {
+    document.getElementById(id).classList.remove("needs-manual-review");
+  });
+  document.getElementById("pdfStatusBanner").classList.add("hidden");
+  document.getElementById("pdfUploadTitle").innerText = "Tap to choose a PDF receipt from your device";
+  document.getElementById("pdfUploadSub").innerText = "Supports digital PDFs from OPay, Moniepoint, GTBank, Zenith, Kuda, etc.";
   document.getElementById("applyTaxesToggle").checked = true;
+  document.getElementById("alreadyPaidToggle").checked = false;
   document.getElementById("enableEscrowToggle").checked = false;
+
   updateContractTelemetry();
-  switchView("escrow");
+  switchView(alreadyPaid ? "tax" : "escrow");
 }
 
 /* =========================================================
-   5. RENDER ALL VIEWS (DASHBOARD, VAULT, TAX ENGINE)
+   6. RENDER ALL SCREENS
    ========================================================= */
 function renderAllViews() {
-  // Compute KPIs
   let activeEscrowSum = 0;
   let activeEscrowCount = 0;
   let settledRevenue = 0;
@@ -207,38 +335,34 @@ function renderAllViews() {
   });
 
   document.getElementById("kpiEscrowLocked").innerText = formatNGN(activeEscrowSum);
-  document.getElementById("kpiEscrowCountLabel").innerText = `${activeEscrowCount} active contract(s)`;
+  document.getElementById("kpiEscrowCountLabel").innerText = `${activeEscrowCount} deal(s) in progress`;
   document.getElementById("kpiGrossRevenue").innerText = formatNGN(settledRevenue);
   document.getElementById("kpiVatLiability").innerText = formatNGN(settledVat);
   document.getElementById("kpiWhtCredits").innerText = formatNGN(settledWht);
   document.getElementById("navEscrowCount").innerText = activeEscrowCount;
 
-  // Turnover Progress against ₦100M Small Company Threshold
   document.getElementById("profLimitRatio").innerText = `${formatNGN(settledRevenue)} / ₦100,000,000`;
   const pct = Math.min(100, (settledRevenue / 100000000) * 100);
   document.getElementById("profTurnoverBar").style.width = `${pct}%`;
 
-  // Render Dashboard Recent Feed
   const recentHost = document.getElementById("dashboardRecentList");
   if (contracts.length === 0) {
-    recentHost.innerHTML = `<div class="empty-box">No transactions recorded yet. Click <strong>+ New Contract</strong> to deploy your first B2B invoice or escrow vault.</div>`;
+    recentHost.innerHTML = `<div class="empty-box">No deals or receipts yet. Tap <strong>+ Add Sale or Receipt</strong> to get started.</div>`;
   } else {
     recentHost.innerHTML = contracts.slice(0, 4).map(c => buildContractCardHTML(c)).join("");
   }
 
-  // Render Full Escrow Vault List
   const vaultHost = document.getElementById("escrowVaultList");
   if (contracts.length === 0) {
-    vaultHost.innerHTML = `<div class="empty-box">Your Escrow Vault is empty. Create a contract to generate a dedicated Paystack Virtual Account.</div>`;
+    vaultHost.innerHTML = `<div class="empty-box">No active deals yet. Create an invoice on the 'Add Sale / PDF' tab to see it here.</div>`;
   } else {
     vaultHost.innerHTML = contracts.map(c => buildContractCardHTML(c)).join("");
   }
 
-  // Render Tax Ledger Table (Strictly SETTLED contracts)
   const taxBody = document.getElementById("taxLedgerTableBody");
   const settledList = contracts.filter(c => c.status === "SETTLED");
   if (settledList.length === 0) {
-    taxBody.innerHTML = `<tr><td colspan="7" class="empty-box">No settled contracts yet. Complete a transaction in the Escrow Vault to populate your FIRS TaxPro Max ledger.</td></tr>`;
+    taxBody.innerHTML = `<tr><td colspan="7" class="empty-box">No completed sales or receipts yet. Upload a paid PDF receipt or finish an escrow deal to see your tax records here.</td></tr>`;
   } else {
     taxBody.innerHTML = settledList.map(c => `
       <tr>
@@ -256,10 +380,10 @@ function renderAllViews() {
 
 function buildContractCardHTML(c) {
   const statusMap = {
-    AWAITING_DEPOSIT: ["status-awaiting", "1. Awaiting Buyer Deposit"],
-    VAULT_LOCKED: ["status-locked", "2. Funds Locked in Vault"],
-    DISPATCHED_INSPECTION: ["status-dispatched", "3. Waybill Logged • Buyer Inspection"],
-    SETTLED: ["status-settled", "4. Settled & Tax Logged"]
+    AWAITING_DEPOSIT: ["status-awaiting", "1. Waiting for Buyer Payment"],
+    VAULT_LOCKED: ["status-locked", "2. Money Safe in Escrow"],
+    DISPATCHED_INSPECTION: ["status-dispatched", "3. Out for Delivery / Inspection"],
+    SETTLED: ["status-settled", "4. Paid & Saved to Tax Records"]
   };
   const [pillClass, pillLabel] = statusMap[c.status];
 
@@ -268,31 +392,31 @@ function buildContractCardHTML(c) {
       <div class="vault-meta">
         <h4>${c.title}</h4>
         <div class="vault-sub">
-          ${c.counterparty} • <span class="mono">${c.id}</span> • ${c.escrowEnabled ? `⛨ Escrow (${c.inspectionWindow})` : "Direct Invoice"}
+          ${c.counterparty} • <span class="mono">${c.id}</span> • ${c.escrowEnabled ? `⛨ Escrow (${c.inspectionWindow})` : "Direct Sale"}
         </div>
       </div>
       <div style="display:flex; align-items:center; gap:12px;">
         <div class="mono" style="font-weight:700; font-size:1rem;">${formatNGN(c.payable)}</div>
         <span class="status-pill ${pillClass}">${pillLabel}</span>
-        <button class="btn-outline-sm" onclick="openContractModal('${c.id}')">Manage &rarr;</button>
+        <button class="btn-outline-sm" onclick="openContractModal('${c.id}')">Manage Deal &rarr;</button>
       </div>
     </div>
   `;
 }
 
 /* =========================================================
-   6. INTERACTIVE ESCROW COMMAND MODAL (4-STAGE LIFECYCLE)
+   7. DEAL MANAGEMENT MODAL
    ========================================================= */
 window.openContractModal = function(contractId) {
   activeModalContractId = contractId;
   const c = contracts.find(item => item.id === contractId);
   if (!c) return;
 
-  document.getElementById("modalContractId").innerText = `${c.id} • VA: ${c.virtualAccount}`;
+  document.getElementById("modalContractId").innerText = `${c.id} • Account: ${c.virtualAccount}`;
   document.getElementById("modalContractTitle").innerText = c.title;
 
   const stages = ["AWAITING_DEPOSIT", "VAULT_LOCKED", "DISPATCHED_INSPECTION", "SETTLED"];
-  const labels = ["1. Deposit", "2. Vault Lock", "3. Inspection", "4. Settled"];
+  const labels = ["1. Payment", "2. In Escrow", "3. Delivery", "4. Completed"];
   const currentIdx = stages.indexOf(c.status);
 
   document.getElementById("modalStepper").innerHTML = labels.map((lbl, idx) => {
@@ -304,43 +428,43 @@ window.openContractModal = function(contractId) {
 
   if (c.status === "AWAITING_DEPOSIT") {
     body.innerHTML = `
-      <p class="text-muted">Share this Paystack Titan Virtual Account with <strong>${c.counterparty}</strong>. Once funded, the escrow state machine locks the principal.</p>
+      <p class="text-muted">Send this Paystack Virtual Account number to <strong>${c.counterparty}</strong>. Once they transfer the money, it is held safely until delivery.</p>
       <div class="va-terminal">
-        <div class="text-muted" style="font-size:0.75rem;">PAYSTACK DEDICATED ESCROW ACCOUNT</div>
+        <div class="text-muted" style="font-size:0.75rem;">PAYSTACK ESCROW ACCOUNT</div>
         <div class="mono" style="font-size:1.5rem; font-weight:800; margin:6px 0;">${c.virtualAccount}</div>
-        <div class="mono silver-highlight">Payable: ${formatNGN(c.payable)}</div>
+        <div class="mono silver-highlight">Amount to Pay: ${formatNGN(c.payable)}</div>
       </div>
       <button class="btn-silver-primary full-width" onclick="transitionContract('${c.id}', 'VAULT_LOCKED')">
-        Simulate Paystack Webhook: Buyer Funded Account &rarr;
+        Test: Mark as Paid by Buyer &rarr;
       </button>
     `;
   } else if (c.status === "VAULT_LOCKED") {
     body.innerHTML = `
-      <p class="text-muted"><strong>${formatNGN(c.payable)}</strong> is locked in the escrow vault. Dispatch the supply and log the waybill/delivery reference to start the <strong>${c.inspectionWindow}</strong> inspection timer.</p>
+      <p class="text-muted"><strong>${formatNGN(c.payable)}</strong> is now locked safely in escrow. Send the goods to the buyer and enter your waybill or rider details below.</p>
       <div class="input-group" style="margin-top:14px;">
-        <label>Waybill / Dispatch Reference Number</label>
-        <input type="text" id="waybillInput" placeholder="e.g., GIGL-ABJ-884920 or Signed Delivery Note">
+        <label>Waybill Number or Delivery Note</label>
+        <input type="text" id="waybillInput" placeholder="e.g., GIG Logistics #884920 or Rider Phone">
       </div>
       <button class="btn-silver-primary full-width" onclick="confirmWaybillDispatch('${c.id}')">
-        Log Dispatch & Start Buyer Inspection Timer &rarr;
+        Save Waybill & Start Buyer Inspection (${c.inspectionWindow}) &rarr;
       </button>
     `;
   } else if (c.status === "DISPATCHED_INSPECTION") {
     body.innerHTML = `
       <div class="va-terminal">
-        <div class="text-muted" style="font-size:0.75rem;">ACTIVE INSPECTION PROTOCOL</div>
-        <div class="mono" style="font-size:0.95rem; margin:6px 0;">Waybill Ref: ${c.waybillDispatchedId}</div>
-        <div class="text-muted" style="font-size:0.78rem;">Release Rule: ${c.releaseCondition} (${c.inspectionWindow})</div>
+        <div class="text-muted" style="font-size:0.75rem;">GOODS IN TRANSIT / BUYER INSPECTION</div>
+        <div class="mono" style="font-size:0.95rem; margin:6px 0;">Delivery Ref: ${c.waybillDispatchedId}</div>
+        <div class="text-muted" style="font-size:0.78rem;">Rule: ${c.releaseCondition} (${c.inspectionWindow})</div>
       </div>
       <button class="btn-silver-primary full-width" onclick="transitionContract('${c.id}', 'SETTLED')">
-        Confirm Buyer Inspection Sign-Off & Release Payout &rarr;
+        Confirm Buyer Approved Goods & Release Money &rarr;
       </button>
     `;
   } else {
     body.innerHTML = `
       <div class="va-terminal" style="border-color:rgba(16,185,129,0.4);">
-        <div style="color:#34d399; font-weight:700; margin-bottom:6px;">✓ PAYOUT SETTLED TO ${companyProfile.bank.toUpperCase()}</div>
-        <p class="text-muted" style="font-size:0.8rem;">Base Revenue (${formatNGN(c.base)}), Output VAT (${formatNGN(c.vat)}), and WHT Credit (${formatNGN(c.wht)}) have been permanently recorded in your FIRS Tax Ledger.</p>
+        <div style="color:#34d399; font-weight:700; margin-bottom:6px;">✓ COMPLETED & PAID TO ${companyProfile.bank.toUpperCase()}</div>
+        <p class="text-muted" style="font-size:0.8rem;">Sale Price (${formatNGN(c.base)}), VAT (${formatNGN(c.vat)}), and WHT Credit (${formatNGN(c.wht)}) are now saved in your FIRS Tax Records.</p>
       </div>
     `;
   }
@@ -349,7 +473,7 @@ window.openContractModal = function(contractId) {
 };
 
 window.confirmWaybillDispatch = function(id) {
-  const wb = document.getElementById("waybillInput").value.trim() || "WB-VERIFIED";
+  const wb = document.getElementById("waybillInput").value.trim() || "DELIVERY-SENT";
   const c = contracts.find(item => item.id === id);
   if (c) {
     c.waybillDispatchedId = wb;
@@ -371,16 +495,16 @@ window.transitionContract = function(id, nextStatus) {
 };
 
 /* =========================================================
-   7. EXPORT FIRS TAXPRO MAX CSV SCHEDULE
+   8. DOWNLOAD FIRS TAX SPREADSHEET (.CSV)
    ========================================================= */
 function exportTaxCsv() {
   const settled = contracts.filter(c => c.status === "SETTLED");
   if (settled.length === 0) {
-    alert("No settled contracts available to export yet.");
+    alert("You have no completed sales or receipts to download yet.");
     return;
   }
 
-  let csv = "Seller_TIN,Seller_RC,Contract_ID,Date,Buyer_Company,Buyer_TIN,Gross_Base_NGN,Output_VAT_7.5_NGN,WHT_Credit_NGN,Net_Settled_NGN\n";
+  let csv = "Your_TIN,Your_RC,Deal_ID,Date,Buyer_Name,Buyer_TIN_Or_Phone,Sale_Amount_NGN,VAT_7.5_NGN,WHT_Credit_NGN,Total_Received_NGN\n";
   settled.forEach(c => {
     csv += `"${companyProfile.tin}","${companyProfile.rc}","${c.id}","${c.createdAt}","${c.counterparty}","${c.counterpartyTin}",${c.base},${c.vat},${c.wht},${c.payable}\n`;
   });
@@ -389,15 +513,14 @@ function exportTaxCsv() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `freebee_FIRS_TaxSchedule_${companyProfile.tin}.csv`;
+  a.download = `freebee_FIRS_TaxRecords_${companyProfile.tin}.csv`;
   a.click();
 }
 
 /* =========================================================
-   8. EVENT LISTENERS
+   9. INITIALIZE LISTENERS
    ========================================================= */
 document.addEventListener("DOMContentLoaded", () => {
-  // Onboarding Form Submit
   document.getElementById("onboardingForm").addEventListener("submit", (e) => {
     e.preventDefault();
     companyProfile = {
@@ -414,24 +537,32 @@ document.addEventListener("DOMContentLoaded", () => {
     initApp();
   });
 
-  // Switch / Reset Entity
   document.getElementById("resetProfileBtn").addEventListener("click", () => {
-    if (confirm("Switch corporate entity? Your current profile will be cleared so you can onboard a new company.")) {
+    if (confirm("Edit or switch your business profile? Your saved sales will still remain intact.")) {
       localStorage.removeItem(STORAGE_KEYS.PROFILE);
       companyProfile = null;
       initApp();
     }
   });
 
-  // Sidebar & Mobile Navigation
   document.querySelectorAll(".nav-item").forEach(btn => {
     btn.addEventListener("click", () => switchView(btn.getAttribute("data-view")));
   });
 
   document.getElementById("dashNewContractBtn").addEventListener("click", () => switchView("create"));
 
-  // Contract Builder Live Listeners
-  ["contractAmount", "contractTaxType", "applyTaxesToggle", "enableEscrowToggle", "escrowWindow", "escrowCondition", "escrowFeeSplit"].forEach(id => {
+  // Local PDF File Picker Listener
+  document.getElementById("pdfFileInput").addEventListener("change", handlePdfUpload);
+
+  // Remove yellow highlight as soon as user types into a manual-review field
+  ["counterpartyName", "counterpartyTin", "contractTitle", "contractAmount"].forEach(id => {
+    document.getElementById(id).addEventListener("input", (e) => {
+      e.target.classList.remove("needs-manual-review");
+    });
+  });
+
+  // Live Payment Breakdown Listeners
+  ["contractAmount", "contractTaxType", "alreadyPaidToggle", "applyTaxesToggle", "enableEscrowToggle", "escrowWindow", "escrowCondition", "escrowFeeSplit"].forEach(id => {
     const el = document.getElementById(id);
     if (el) {
       el.addEventListener("input", updateContractTelemetry);
