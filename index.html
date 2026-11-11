@@ -3,20 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>freebee — Safe Escrow & Easy Tax Records</title>
-  <!-- Google Fonts: Inter for clean UI, JetBrains Mono for numbers/PINs -->
+  <title>freebee — Smart Invoicing & Easy Tax Records</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <!-- Mozilla PDF.js for reading PDF bank receipts directly from the user's phone/laptop -->
+  <!-- Mozilla PDF.js for digital PDFs -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <!-- Tesseract.js OCR for OPay image-based PDF receipts -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
   <!-- =========================================================
-       SCREEN 0: BUSINESS LOGIN & SETUP
-       Collects the business details needed for payouts and FIRS tax spreadsheets.
+       SCREEN 0: BUSINESS SETUP & LOGIN
        ========================================================= -->
   <div id="auth-gate" class="auth-wrapper">
     <div class="auth-card glass-panel">
@@ -24,7 +24,7 @@
         <div class="freebee-logo-mark">f</div>
         <span class="freebee-wordmark">freebee</span>
       </div>
-      <p class="auth-subtitle">Protect your business payments with Paystack Escrow and keep your FIRS tax records ready automatically.</p>
+      <p class="auth-subtitle">Organize your business sales, scan bank PDF receipts, and keep your FIRS tax records ready automatically.</p>
 
       <form id="onboardingForm" autocomplete="off">
         <div class="form-grid-2">
@@ -92,11 +92,10 @@
   </div>
 
   <!-- =========================================================
-       MAIN APP WORKSPACE (SIDEBAR + 4 SCREENS)
+       MAIN APP WORKSPACE
        ========================================================= -->
   <div id="app-workspace" class="workspace-shell hidden">
 
-    <!-- Navigation Sidebar (Left on Desktop, Bottom Bar on Phone) -->
     <aside class="sidebar glass-panel">
       <div class="sidebar-top">
         <div class="brand-header compact">
@@ -114,12 +113,12 @@
             <span class="nav-text">Add Sale / PDF</span>
           </button>
           <button class="nav-item" data-view="escrow">
-            <span class="nav-icon">⛨</span>
-            <span class="nav-text">Active Deals</span>
+            <span class="nav-icon">▤</span>
+            <span class="nav-text">Invoices & Deals</span>
             <span class="nav-counter" id="navEscrowCount">0</span>
           </button>
           <button class="nav-item" data-view="tax">
-            <span class="nav-icon">▤</span>
+            <span class="nav-icon">🗂️</span>
             <span class="nav-text">Tax Records</span>
           </button>
         </nav>
@@ -136,13 +135,12 @@
       </div>
     </aside>
 
-    <!-- Main Content Viewport -->
     <main class="main-viewport">
 
       <header class="viewport-header">
         <div>
           <h1 id="viewHeaderTitle">Business Overview</h1>
-          <p id="viewHeaderSub" class="text-muted">See your active escrow payments and tax numbers at a glance.</p>
+          <p id="viewHeaderSub" class="text-muted">See your sales, invoices, and monthly tax numbers at a glance.</p>
         </div>
         <div class="header-badges">
           <span class="pill-silver mono" id="headerRcBadge">RC: —</span>
@@ -150,27 +148,59 @@
         </div>
       </header>
 
-      <!-- =====================================================
-           SCREEN 1: OVERVIEW DASHBOARD
-           ===================================================== -->
+      <!-- SCREEN 1: DASHBOARD -->
       <section id="view-dashboard" class="view-section">
+        <div id="walkthroughBanner" class="walkthrough-card glass-panel">
+          <div class="walkthrough-head">
+            <div>
+              <span class="walkthrough-badge">👋 WELCOME TO FREEBEE</span>
+              <h3>How to get your tax records ready in 3 simple steps</h3>
+            </div>
+            <button type="button" id="dismissWalkthroughBtn" class="btn-outline-sm">Hide Guide</button>
+          </div>
+
+          <div class="walkthrough-grid">
+            <div class="walkthrough-step">
+              <div class="step-num mono">01</div>
+              <h4>Upload an OPay / Bank PDF Receipt</h4>
+              <p>Upload a PDF receipt on the <strong>Add Sale / PDF</strong> page and our scanner will pull the numbers automatically.</p>
+            </div>
+            <div class="walkthrough-step">
+              <div class="step-num mono">02</div>
+              <h4>Automatic VAT & WHT Math</h4>
+              <p>We automatically separate 7.5% VAT and track the 2% or 5% Withholding Tax (WHT) corporate buyers deduct.</p>
+            </div>
+            <div class="walkthrough-step">
+              <div class="step-num mono">03</div>
+              <h4>Download Your FIRS Spreadsheet</h4>
+              <p>At month-end, go to <strong>Tax Records</strong> and download a clean CSV file ready for FIRS TaxPro Max.</p>
+            </div>
+          </div>
+
+          <div class="walkthrough-cta">
+            <button type="button" class="btn-silver-primary" id="walkthroughStartBtn">
+              + Upload Your First PDF Receipt or Sale &rarr;
+            </button>
+          </div>
+        </div>
+
         <div class="kpi-grid">
           <div class="kpi-card glass-panel">
-            <span class="kpi-label">Money Held in Escrow</span>
+            <span class="kpi-label">Pending Invoices</span>
             <div class="kpi-value mono" id="kpiEscrowLocked">₦0</div>
-            <span class="kpi-foot" id="kpiEscrowCountLabel">0 deals in progress</span>
+            <span class="kpi-foot" id="kpiEscrowCountLabel">No pending invoices yet</span>
           </div>
 
           <div class="kpi-card glass-panel">
             <span class="kpi-label">Completed Sales</span>
             <div class="kpi-value mono" id="kpiGrossRevenue">₦0</div>
-            <span class="kpi-foot">Total money paid out to you</span>
+            <span class="kpi-foot" id="kpiRevenueFoot">Log a sale or PDF to start</span>
           </div>
 
           <div class="kpi-card glass-panel">
             <span class="kpi-label">VAT Collected (7.5%)</span>
             <div class="kpi-value mono" id="kpiVatLiability">₦0</div>
-            <span class="kpi-foot">For monthly FIRS filing</span>
+            <span class="kpi-foot">Auto-calculated for FIRS</span>
           </div>
 
           <div class="kpi-card glass-panel">
@@ -183,7 +213,7 @@
         <div class="dashboard-split">
           <div class="glass-panel panel-pad">
             <div class="panel-head">
-              <h3>Recent Deals & Receipts</h3>
+              <h3>Recent Sales & Receipts</h3>
               <button class="btn-outline-sm" id="dashNewContractBtn">+ Add Sale or Receipt</button>
             </div>
             <div id="dashboardRecentList"></div>
@@ -192,28 +222,14 @@
           <div class="glass-panel panel-pad">
             <div class="panel-head">
               <h3>Your Business Tax Profile</h3>
+              <button type="button" class="btn-outline-sm" id="showGuideAgainBtn">Show Guide</button>
             </div>
             <div class="entity-details-list">
-              <div class="entity-row">
-                <span>Business Name</span>
-                <strong id="profLegalName">—</strong>
-              </div>
-              <div class="entity-row">
-                <span>FIRS Tax ID (TIN)</span>
-                <strong class="mono" id="profTin">—</strong>
-              </div>
-              <div class="entity-row">
-                <span>Tax Office</span>
-                <strong id="profState">—</strong>
-              </div>
-              <div class="entity-row">
-                <span>Payout Bank</span>
-                <strong class="mono" id="profBank">—</strong>
-              </div>
-              <div class="entity-row">
-                <span>0% Company Tax Limit</span>
-                <strong class="mono" id="profLimitRatio">₦0 / ₦100M</strong>
-              </div>
+              <div class="entity-row"><span>Business Name</span><strong id="profLegalName">—</strong></div>
+              <div class="entity-row"><span>FIRS Tax ID (TIN)</span><strong class="mono" id="profTin">—</strong></div>
+              <div class="entity-row"><span>Tax Office</span><strong id="profState">—</strong></div>
+              <div class="entity-row"><span>Payout Bank</span><strong class="mono" id="profBank">—</strong></div>
+              <div class="entity-row"><span>0% Company Tax Limit</span><strong class="mono" id="profLimitRatio">₦0 / ₦100M</strong></div>
             </div>
             <div class="progress-track">
               <div class="progress-bar-silver" id="profTurnoverBar" style="width: 0%;"></div>
@@ -222,16 +238,13 @@
         </div>
       </section>
 
-      <!-- =====================================================
-           SCREEN 2: ADD SALE OR UPLOAD PDF RECEIPT
-           ===================================================== -->
+      <!-- SCREEN 2: ADD SALE / PDF SCANNER -->
       <section id="view-create" class="view-section hidden">
         <div class="create-layout">
           <div class="glass-panel panel-pad">
-            <h3>1. Auto-Fill from a Bank PDF Receipt (Optional)</h3>
-            <p class="text-muted sm-gap">Tap below to pick a PDF receipt from your phone or computer. We will pull the numbers we can find so you don't have to type everything.</p>
+            <h3>1. Auto-Fill from an OPay or Bank PDF Receipt</h3>
+            <p class="text-muted sm-gap">Tap below to pick an OPay or bank receipt PDF. Our scanner reads text and images automatically.</p>
 
-            <!-- Local Storage File Picker for PDFs -->
             <div class="pdf-upload-zone" id="pdfDropZone">
               <input type="file" id="pdfFileInput" accept=".pdf,application/pdf" class="hidden-file-input">
               <div class="upload-icon">📄</div>
@@ -239,13 +252,12 @@
               <div class="upload-sub" id="pdfUploadSub">Works with OPay, Moniepoint, GTBank, Zenith, Access, and Kuda PDFs</div>
             </div>
 
-            <!-- Banner that shows what was found in the PDF -->
             <div id="pdfStatusBanner" class="pdf-banner hidden"></div>
 
             <hr class="section-divider">
 
             <h3>2. Sale & Customer Details</h3>
-            <p class="text-muted sm-gap">Enter the details below to create an Escrow payment link or save a past receipt.</p>
+            <p class="text-muted sm-gap">Review the scanned details or fill them in to log your sale.</p>
 
             <form id="contractForm" autocomplete="off">
               <div class="form-grid-2">
@@ -260,7 +272,7 @@
               </div>
 
               <div class="input-group">
-                <label for="contractTitle">What are you selling or supplying? *</label>
+                <label for="contractTitle">What did you sell or supply? *</label>
                 <input type="text" id="contractTitle" required placeholder="e.g., 40 Units of Solar Inverters">
               </div>
 
@@ -279,19 +291,17 @@
                 </div>
               </div>
 
-              <!-- Toggle 1: Already Paid Receipt -->
               <div class="control-row">
                 <div>
                   <h4>✓ This sale is already paid (Save straight to Tax Records)</h4>
-                  <p>Turn this on if the customer already paid you and you just want this receipt recorded for tax filing.</p>
+                  <p>Keep this on if the customer already paid you and you want this recorded in your FIRS Tax Ledger.</p>
                 </div>
                 <label class="cyber-switch">
-                  <input type="checkbox" id="alreadyPaidToggle">
+                  <input type="checkbox" id="alreadyPaidToggle" checked>
                   <span class="cyber-slider"></span>
                 </label>
               </div>
 
-              <!-- Toggle 2: VAT & WHT -->
               <div class="control-row">
                 <div>
                   <h4>Calculate VAT (7.5%) & Withholding Tax</h4>
@@ -303,11 +313,10 @@
                 </label>
               </div>
 
-              <!-- Toggle 3: Escrow Protection (Unlocks the Escrow Settings Drawer) -->
               <div class="control-row highlight-row" id="escrowMasterRow">
                 <div>
-                  <h4>⛨ Protect this payment with Paystack Escrow</h4>
-                  <p>Uses a 24-hour shipping timer and a 4-digit Buyer Delivery PIN so both sides are safe.</p>
+                  <h4>⛨ Protect this payment with Escrow <span class="coming-soon-tag">Coming Soon</span></h4>
+                  <p>Hold buyer funds safely until goods are delivered and inspected.</p>
                 </div>
                 <label class="cyber-switch">
                   <input type="checkbox" id="enableEscrowToggle">
@@ -315,112 +324,61 @@
                 </label>
               </div>
 
-              <!-- PRECEDING ESCROW SETTINGS (Appears when Escrow Toggle is ON) -->
-              <div id="escrowFunctionsDrawer" class="escrow-drawer hidden">
-                <div class="drawer-header">
-                  <span class="mono">⛨ ESCROW PROTECTION SETTINGS (24H AUTO-REFUND + 4-DIGIT PIN)</span>
-                </div>
-                <div class="form-grid-2">
-                  <div class="input-group">
-                    <label for="escrowWindow">Shipping & Refund Rule</label>
-                    <select id="escrowWindow">
-                      <option value="24 Hours" selected>Ship within 24 Hours (Or Auto-Refund Buyer)</option>
-                      <option value="48 Hours">Ship within 48 Hours (Or Auto-Refund Buyer)</option>
-                    </select>
-                  </div>
-                  <div class="input-group">
-                    <label for="escrowCondition">How Money is Released to You</label>
-                    <select id="escrowCondition">
-                      <option value="4-Digit Buyer Delivery PIN" selected>Buyer gives you their 4-Digit Delivery PIN</option>
-                    </select>
-                  </div>
-                </div>
-                <div class="form-grid-2">
-                  <div class="input-group">
-                    <label for="escrowFeeSplit">Who pays the 1.5% Escrow fee?</label>
-                    <select id="escrowFeeSplit">
-                      <option value="50_50">Split 50/50 between you and buyer</option>
-                      <option value="BUYER">Buyer pays 100% of the fee</option>
-                      <option value="SELLER">You pay 100% of the fee</option>
-                    </select>
-                  </div>
-                  <div class="input-group">
-                    <label for="escrowWaybillRef">Delivery Method / Note</label>
-                    <input type="text" id="escrowWaybillRef" placeholder="e.g., GIG Logistics or Dispatch Rider">
-                  </div>
-                </div>
+              <div id="escrowFunctionsDrawer" class="escrow-drawer under-construction-box hidden">
+                <div class="construction-icon">🚧</div>
+                <h4>Escrow Service is Currently Under Construction</h4>
+                <p>We are finalizing our licensed B2B Escrow integration so your buyers and suppliers can transact with 100% protection. <strong>Thank you for your patience!</strong></p>
+                <p class="construction-sub">For now, you can continue logging your sales, generating invoices, and organizing your FIRS Tax Records seamlessly.</p>
               </div>
 
               <button type="submit" class="btn-silver-primary full-width" id="submitContractBtn">
-                Create Invoice & Payment Link &rarr;
+                Save Receipt to Tax Records &rarr;
               </button>
             </form>
           </div>
 
-          <!-- Right Side: Live Summary of the Numbers -->
           <div class="glass-panel panel-pad preview-panel">
             <h3>Payment Summary</h3>
-            <p class="text-muted sm-gap">See the exact amount the buyer will pay and what goes into your tax records.</p>
+            <p class="text-muted sm-gap">See the exact amount and what goes into your tax records.</p>
 
             <div class="telemetry-list mono">
-              <div class="t-row">
-                <span>Sale Price</span>
-                <span id="prevBaseVal">₦0</span>
-              </div>
-              <div class="t-row">
-                <span>VAT (7.5%)</span>
-                <span id="prevVatVal">+ ₦0</span>
-              </div>
-              <div class="t-row">
-                <span>WHT Kept by Buyer (Your Tax Credit)</span>
-                <span id="prevWhtVal">- ₦0</span>
-              </div>
-              <div class="t-row" id="prevEscrowFeeRow" style="display:none;">
-                <span>Escrow Fee (1.5%)</span>
-                <span id="prevEscrowFeeVal">₦0</span>
-              </div>
-              <div class="t-row total">
-                <span>Total Buyer Pays</span>
-                <span id="prevNetPayable">₦0</span>
-              </div>
+              <div class="t-row"><span>Sale Price</span><span id="prevBaseVal">₦0</span></div>
+              <div class="t-row"><span>VAT (7.5%)</span><span id="prevVatVal">+ ₦0</span></div>
+              <div class="t-row"><span>WHT Kept by Buyer (Your Tax Credit)</span><span id="prevWhtVal">- ₦0</span></div>
+              <div class="t-row total"><span>Net Amount Received</span><span id="prevNetPayable">₦0</span></div>
             </div>
 
             <div class="mode-indicator" id="previewModeBox">
-              <div class="mode-title" id="previewModeTitle">DIRECT PAYMENT LINK</div>
-              <p id="previewModeDesc">Creates a simple payment link without an escrow hold.</p>
+              <div class="mode-title" id="previewModeTitle">✓ DIRECT TAX RECORD LOG</div>
+              <p id="previewModeDesc">Saves straight to your FIRS Tax Records as a completed sale.</p>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- =====================================================
-           SCREEN 3: ACTIVE DEALS & ESCROW
-           ===================================================== -->
+      <!-- SCREEN 3: INVOICES & DEALS -->
       <section id="view-escrow" class="view-section hidden">
         <div class="glass-panel panel-pad">
           <div class="panel-head">
             <div>
-              <h3>Active Deals & Escrow Payments</h3>
-              <p class="text-muted">Tap "Manage Deal" on any item to view the 24-hour shipping timer, log a waybill, or enter the buyer's 4-digit Delivery PIN.</p>
+              <h3>Your Invoices & Logged Deals</h3>
+              <p class="text-muted">View all your logged sales and pending customer invoices. Click "View Details" to mark an unpaid invoice as paid.</p>
             </div>
+            <button type="button" class="btn-outline-sm" id="vaultAddSaleBtn">+ Add New Sale</button>
           </div>
           <div id="escrowVaultList" class="vault-list"></div>
         </div>
       </section>
 
-      <!-- =====================================================
-           SCREEN 4: TAX RECORDS (READY FOR TAXPRO MAX)
-           ===================================================== -->
+      <!-- SCREEN 4: TAX RECORDS -->
       <section id="view-tax" class="view-section hidden">
         <div class="glass-panel panel-pad">
           <div class="panel-head">
             <div>
               <h3>Your FIRS Tax Records</h3>
-              <p class="text-muted">All completed deals and uploaded receipts are organized here. Download your spreadsheet anytime to upload on FIRS TaxPro Max.</p>
+              <p class="text-muted">All completed sales and uploaded receipts are organized here. Download your spreadsheet anytime for FIRS TaxPro Max.</p>
             </div>
-            <button id="downloadTaxCsvBtn" class="btn-silver-primary">
-              &darr; Download Tax Spreadsheet (.CSV)
-            </button>
+            <button id="downloadTaxCsvBtn" class="btn-silver-primary">&darr; Download Tax Spreadsheet (.CSV)</button>
           </div>
 
           <div class="tax-table-wrapper">
@@ -445,10 +403,7 @@
     </main>
   </div>
 
-  <!-- =========================================================
-       DEAL POPUP MODAL (FIXED CLOSE BUTTONS + 24H TIMER + 4-DIGIT PIN)
-       Clicking the dark backdrop or pressing ESC also closes this modal.
-       ========================================================= -->
+  <!-- DEAL DETAILS POPUP MODAL -->
   <div id="escrowModal" class="modal-backdrop hidden">
     <div class="modal-card glass-panel" id="modalCardBox">
       <div class="modal-top">
@@ -456,23 +411,13 @@
           <span class="mono text-muted" id="modalContractId">DEAL-0000</span>
           <h3 id="modalContractTitle">Deal Title</h3>
         </div>
-        <!-- Clear Top-Right Close Button -->
-        <button type="button" id="closeModalTopBtn" class="btn-close-pill" aria-label="Close popup">
-          ✕ Close
-        </button>
+        <button type="button" id="closeModalTopBtn" class="btn-close-pill">✕ Close</button>
       </div>
 
-      <!-- 4-Step Progress Bar -->
-      <div class="stepper" id="modalStepper"></div>
-
-      <!-- Dynamic Step Content (Paystack Account, 24h Timer, or 4-Digit PIN) -->
       <div id="modalDynamicBody" class="modal-body-content"></div>
 
-      <!-- Always-visible Bottom Close Button so the user is never stuck -->
       <div class="modal-footer">
-        <button type="button" id="closeModalBottomBtn" class="btn-outline-sm full-width">
-          Close Window
-        </button>
+        <button type="button" id="closeModalBottomBtn" class="btn-outline-sm full-width">Close Window</button>
       </div>
     </div>
   </div>
