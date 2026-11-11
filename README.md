@@ -1,12 +1,48 @@
-# TrustLedger NG — Smart B2B Escrow & Tax Readiness MVP[span_1](start_span)[span_1](end_span)
+# freebee
 
-A lightweight B2B invoicing, Paystack escrow state-machine simulator, and passive FIRS tax readiness web app tailored for Nigerian SMEs[span_2](start_span)[span_2](end_span).
+**Safe Escrow + Easy Tax Records for Nigerian SMEs**
 
-## Project Structure[span_3](start_span)[span_3](end_span)
-- `index.html` — Main semantic layout (3-tab interface + Buyer Paystack simulation modal)[span_4](start_span)[span_4](end_span)
-- `styles.css` — Responsive mobile-first styling and status badges[span_5](start_span)[span_5](end_span)
-- `app.js` — Escrow state machine (`AWAITING_PAYMENT` -> `ESCROW_FUNDED` -> `COMPLETED`), Nigerian VAT (7.5%) & WHT (2% / 5%) auto-calculator, and FIRS TaxPro Max CSV schedule exporter[span_6](start_span)[span_6](end_span)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-blue?style=flat-square)](https://mikegm19.github.io/frebees-software-solutions-network/)
+[![Status](https://img.shields.io/badge/Status-MVP-orange?style=flat-square)]()
+[![Made for Nigeria](https://img.shields.io/badge/Made%20for-Nigeria-green?style=flat-square)]()
 
-## Running Locally or Deploying[span_7](start_span)[span_7](end_span)
-1. Clone this repository or extract the files into a folder[span_8](start_span)[span_8](end_span).
-2. Open `index.html` directly in any browser, or deploy the folder directly to **GitHub Pages** or **Vercel**[span_9](start_span)[span_9](end_span).
+> Protect your business payments with escrow-style safety and keep your FIRS tax records ready automatically.
+
+**Live Demo →** [https://mikegm19.github.io/frebees-software-solutions-network/](https://mikegm19.github.io/frebees-software-solutions-network/)
+
+---
+
+### The Problem
+
+Nigerian SMEs face two constant headaches:
+
+1. **Payment risk** – Customers delay or refuse to pay after receiving goods/services.
+2. **Tax compliance** – Tracking VAT (7.5%), Withholding Tax (WHT), and preparing records for FIRS TaxPro Max is time-consuming and error-prone.
+
+Most tools solve only one of these problems. freebee solves both.
+
+---
+
+### What freebee Does
+
+freebee is a lightweight, browser-based tool that helps Nigerian businesses:
+
+- Create secure payment links with **escrow-style protection** (24-hour shipping timer + buyer delivery PIN)
+- Automatically calculate **VAT (7.5%)** and **WHT (2% or 5%)**
+- Auto-fill sale details from bank PDF receipts (OPay, Moniepoint, GTBank, Zenith, Access, Kuda)
+- Maintain clean tax records ready for monthly FIRS filing
+- Export a TaxPro Max–compatible CSV in one click
+- Track progress toward the ₦100 million turnover threshold for 0% Company Income Tax
+
+Everything runs **entirely in your browser**. No account required. Your data stays on your device.
+
+---
+
+### Key Features
+
+- **Business Onboarding**  
+  Capture CAC/RC number, TIN, tax office, sector, bank details, and turnover tier.
+
+- **Smart Sale Creation**  
+  - Manual entry or PDF receipt auto-fill  
+  - Toggle for already-paid sales (record only) vs new
