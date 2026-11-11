@@ -1,7 +1,9 @@
+/* =========================================================
+   1. COLOR VARIABLES & RESET (FUTURISTIC OBSIDIAN & SILVER)
+   ========================================================= */
 :root {
   --bg-obsidian: #06080d;
-  --bg-elevated: rgba(14, 19, 30, 0.78);
-  --bg-glass: rgba(20, 27, 42, 0.55);
+  --bg-elevated: rgba(14, 19, 30, 0.82);
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-specular: rgba(226, 232, 240, 0.24);
   --text-primary: #f8fafc;
@@ -42,7 +44,7 @@ body {
 }
 
 /* =========================================================
-   THE "freebee" FACEBOOK-INSPIRED SILVER LOGO
+   2. THE "freebee" FACEBOOK-STYLE SILVER LOGO
    ========================================================= */
 .brand-header {
   display: flex;
@@ -106,7 +108,7 @@ body {
 }
 
 /* =========================================================
-   GLASS PANELS & FORM CONTROLS
+   3. GLASS CARDS, FORMS & PDF UPLOAD DROPZONE
    ========================================================= */
 .glass-panel {
   background: var(--bg-elevated);
@@ -146,7 +148,6 @@ body {
   margin: 22px 0;
 }
 
-/* PDF Receipt Upload Zone */
 .pdf-upload-zone {
   position: relative;
   border: 1.5px dashed var(--border-specular);
@@ -183,6 +184,7 @@ body {
   font-size: 0.92rem;
   color: var(--text-primary);
   margin-bottom: 4px;
+  word-break: break-word;
 }
 
 .upload-sub {
@@ -194,20 +196,19 @@ body {
   padding: 12px 14px;
   border-radius: 10px;
   font-size: 0.82rem;
-  line-height: 1.4;
+  line-height: 1.45;
   margin-bottom: 14px;
   background: rgba(56, 189, 248, 0.1);
   border: 1px solid rgba(56, 189, 248, 0.35);
   color: #e0f2fe;
+  word-break: break-word;
 }
 
-/* Highlight for fields that need manual completion after PDF scan */
 .needs-manual-review {
   border-color: var(--accent-amber) !important;
   box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.18) !important;
 }
 
-/* Onboarding Gate */
 .auth-wrapper {
   min-height: 100vh;
   display: flex;
@@ -267,7 +268,9 @@ select:focus {
   box-shadow: 0 0 0 3px rgba(203, 213, 225, 0.12);
 }
 
-/* Buttons */
+/* =========================================================
+   4. BUTTONS
+   ========================================================= */
 .btn-silver-primary {
   background: var(--silver-button);
   color: #06080d;
@@ -287,29 +290,30 @@ select:focus {
 }
 
 .btn-outline-sm {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--text-primary);
   border: 1px solid var(--border-specular);
-  padding: 8px 14px;
+  padding: 9px 14px;
   border-radius: 8px;
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
   transition: 0.2s;
 }
 
 .btn-outline-sm:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .btn-ghost-danger {
   width: 100%;
   background: transparent;
-  border: 1px solid rgba(239, 68, 68, 0.25);
+  border: 1px solid rgba(239, 68, 68, 0.3);
   color: #f87171;
-  padding: 8px;
+  padding: 9px;
   border-radius: 8px;
-  font-size: 0.76rem;
+  font-size: 0.78rem;
+  font-weight: 600;
   cursor: pointer;
   margin-top: 8px;
 }
@@ -320,7 +324,7 @@ select:focus {
 }
 
 /* =========================================================
-   DESKTOP WORKSPACE & SIDEBAR LAYOUT
+   5. WORKSPACE SHELL & SIDEBAR
    ========================================================= */
 .workspace-shell {
   display: grid;
@@ -408,7 +412,6 @@ select:focus {
   margin-top: 3px;
 }
 
-/* Main Viewport */
 .main-viewport {
   padding: 32px 40px;
   max-width: 1280px;
@@ -456,7 +459,9 @@ select:focus {
   font-weight: 600;
 }
 
-/* KPI Grid */
+/* =========================================================
+   6. DASHBOARD KPIs & SPLIT PANELS
+   ========================================================= */
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -478,9 +483,10 @@ select:focus {
 }
 
 .kpi-value {
-  font-size: 1.6rem;
+  font-size: 1.55rem;
   font-weight: 700;
   margin: 10px 0 6px;
+  word-break: break-word;
 }
 
 .silver-highlight {
@@ -511,6 +517,7 @@ select:focus {
   font-size: 0.85rem;
   padding-bottom: 10px;
   border-bottom: 1px solid var(--border-subtle);
+  gap: 10px;
 }
 
 .entity-row span {
@@ -532,7 +539,7 @@ select:focus {
 }
 
 /* =========================================================
-   NEW SALE & ESCROW DRAWER
+   7. CREATE SALE & ESCROW TOGGLES
    ========================================================= */
 .create-layout {
   display: grid;
@@ -672,7 +679,7 @@ select:focus {
 }
 
 /* =========================================================
-   ACTIVE DEALS & TAX TABLE
+   8. ACTIVE DEALS LIST & TAX TABLE
    ========================================================= */
 .vault-item {
   display: flex;
@@ -687,14 +694,28 @@ select:focus {
   flex-wrap: wrap;
 }
 
+.vault-meta {
+  flex: 1;
+  min-width: 200px;
+}
+
 .vault-meta h4 {
   font-size: 0.96rem;
   margin-bottom: 4px;
+  word-break: break-word;
 }
 
 .vault-sub {
   font-size: 0.78rem;
   color: var(--text-secondary);
+  word-break: break-word;
+}
+
+.vault-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .status-pill {
@@ -710,6 +731,7 @@ select:focus {
 .status-locked { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.35); }
 .status-dispatched { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.35); }
 .status-settled { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.35); }
+.status-refunded { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.35); }
 
 .tax-table-wrapper {
   overflow-x: auto;
@@ -743,47 +765,87 @@ select:focus {
 }
 
 /* =========================================================
-   MODAL & STEPPER
+   9. POPUP MODAL, 24H COUNTDOWN & 4-DIGIT PIN INPUT
    ========================================================= */
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(3, 5, 9, 0.82);
+  background: rgba(3, 5, 9, 0.85);
   backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 16px;
-  z-index: 100;
+  z-index: 200;
+  overflow-y: auto;
 }
 
 .modal-card {
   width: 100%;
-  max-width: 520px;
-  padding: 26px;
+  max-width: 540px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 24px;
   border: 1px solid var(--border-specular);
+  margin: auto;
 }
 
 .modal-top {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 18px;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
-.btn-close {
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  font-size: 1.6rem;
+.modal-title-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.modal-title-wrap h3 {
+  font-size: 1.05rem;
+  margin-top: 4px;
+  word-break: break-word;
+  line-height: 1.35;
+}
+
+.btn-close-pill {
+  background: rgba(239, 68, 68, 0.14);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
   cursor: pointer;
+  flex-shrink: 0;
+  transition: 0.2s;
+}
+
+.btn-close-pill:hover {
+  background: rgba(239, 68, 68, 0.28);
+  color: #ffffff;
+}
+
+.modal-body-content {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.modal-footer {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
 }
 
 .stepper {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 6px;
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 }
 
 .step-node {
@@ -812,18 +874,75 @@ select:focus {
   background: rgba(0, 0, 0, 0.45);
   border: 1px dashed var(--border-specular);
   border-radius: 12px;
-  padding: 18px;
+  padding: 16px;
   text-align: center;
-  margin: 16px 0;
+  margin: 14px 0;
+}
+
+/* 24-Hour Countdown Box */
+.timer-box {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 12px;
+  padding: 14px;
+  text-align: center;
+  margin: 12px 0;
+}
+
+.timer-digits {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: #fbbf24;
+  letter-spacing: 0.05em;
+  margin: 4px 0;
+}
+
+/* Buyer Secret PIN Preview Box */
+.buyer-pin-badge {
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 10px;
+  padding: 12px;
+  margin: 12px 0;
+  font-size: 0.8rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.pin-code-display {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #38bdf8;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 4px 10px;
+  border-radius: 6px;
+  letter-spacing: 0.15em;
+}
+
+.pin-input-field {
+  text-align: center;
+  font-size: 1.35rem !important;
+  font-weight: 800;
+  letter-spacing: 0.3em;
+}
+
+.error-msg {
+  color: #f87171;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-top: 6px;
+  text-align: center;
 }
 
 /* =========================================================
-   RESPONSIVE BREAKPOINTS (MOBILE & TABLET)
+   10. MOBILE & TABLET RESPONSIVENESS
    ========================================================= */
 @media (max-width: 960px) {
   .workspace-shell {
     grid-template-columns: 1fr;
-    padding-bottom: 80px;
+    padding-bottom: 85px;
   }
 
   .sidebar {
@@ -836,7 +955,7 @@ select:focus {
     padding: 8px 12px;
     z-index: 60;
     border-top: 1px solid var(--border-specular);
-    background: rgba(8, 11, 18, 0.94);
+    background: rgba(8, 11, 18, 0.96);
   }
 
   .sidebar-top .brand-header,
