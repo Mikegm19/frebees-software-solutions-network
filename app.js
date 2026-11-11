@@ -1,37 +1,33 @@
 /**
  * =========================================================
- * FREEBEE — B2B ESCROW & TAX RECORDS ENGINE (app.js)
+ * FREEBEE — SMART INVOICING, OPay/BANK PDF OCR & TAX LEDGER
  * =========================================================
- * Features included in this file:
+ * Upgraded with:
  * 1. Business Onboarding & LocalStorage saving
- * 2. Mozilla PDF.js Bank Receipt Scanner (pulls Amount, Name, Details)
- * 3. Live 24-Hour Shipping Countdown Timer (with auto-refund trigger)
- * 4. 4-Digit Buyer Delivery PIN verification before releasing money
+ * 2. First-load "How It Works" Walkthrough Guide & rich empty states
+ * 3. Mozilla PDF.js + Tesseract.js OCR fallback for OPay image PDFs
+ * 4. Escrow "Under Construction" notice under the Escrow Toggle
  * 5. FIRS TaxPro Max CSV Spreadsheet generator
  */
 
-// Set up Mozilla PDF.js worker for reading PDFs from local device storage
 if (window.pdfjsLib) {
   pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 }
 
 const STORAGE_KEYS = {
   PROFILE: "freebee_company_profile_v1",
-  CONTRACTS: "freebee_contracts_v1"
+  CONTRACTS: "freebee_contracts_v1",
+  GUIDE_HIDDEN: "freebee_hide_guide_v1"
 };
 
-// Load saved business info and deals from browser storage
 let companyProfile = JSON.parse(localStorage.getItem(STORAGE_KEYS.PROFILE)) || null;
 let contracts = JSON.parse(localStorage.getItem(STORAGE_KEYS.CONTRACTS)) || [];
-let activeModalContractId = null;
-let countdownTimerInterval = null; // Holds the live 1-second timer
+let guideHidden = localStorage.getItem(STORAGE_KEYS.GUIDE_HIDDEN) === "true";
 
-// Helper: Format numbers into Nigerian Naira (e.g., ₦2,500,000)
 function formatNGN(amount) {
   return "₦" + Number(amount || 0).toLocaleString("en-NG", { maximumFractionDigits: 0 });
 }
 
-// Helper: Save current state to browser storage
 function saveState() {
   localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(companyProfile));
   localStorage.setItem(STORAGE_KEYS.CONTRACTS, JSON.stringify(contracts));
@@ -74,7 +70,7 @@ function populateCompanyIdentity() {
 /* =========================================================
    2. SCREEN NAVIGATION
    ========================================================= */
-function switchView(viewKey) {
+window.switchView = function(viewKey) {
   document.querySelectorAll(".view-section").forEach(s => s.classList.add("hidden"));
   document.querySelectorAll(".nav-item").forEach(b => b.classList.remove("active"));
 
@@ -85,9 +81,9 @@ function switchView(viewKey) {
   if (activeNav) activeNav.classList.add("active");
 
   const titles = {
-    dashboard: ["Business Overview", "See your active escrow payments and tax numbers at a glance."],
-    create: ["Add Sale or Upload Receipt", "Scan a PDF bank receipt from your device or create a protected payment link."],
-    escrow: ["Active Deals & Escrow", "Track 24-hour shipping timers, delivery waybills, and 4-digit PIN releases."],
+    dashboard: ["Business Overview", "See your sales, invoices, and monthly tax numbers at a glance."],
+    create: ["Add Sale or Upload Receipt", "Scan an OPay or bank PDF receipt from your device or log a new customer invoice."],
+    escrow: ["Your Invoices & Deals", "Track all your logged sales and pending customer invoices."],
     tax: ["Your FIRS Tax Records", "Download your clean spreadsheet ready for FIRS TaxPro Max."]
   };
 
@@ -97,11 +93,10 @@ function switchView(viewKey) {
   }
 
   renderAllViews();
-}
+};
 
 /* =========================================================
-   3. MOZILLA PDF.JS RECEIPT SCANNER
-   Reads digital PDFs from OPay, Moniepoint, GTBank, etc.
+   3. UPGRADED OPay & BANK PDF SCANNER (PDF.JS + OCR FALLBACK)
    ========================================================= */
 async function handlePdfUpload(event) {
   const file = event.target.files[0];
@@ -111,8 +106,8 @@ async function handlePdfUpload(event) {
   const subEl = document.getElementById("pdfUploadSub");
   const banner = document.getElementById("pdfStatusBanner");
 
-  titleEl.innerText = `Reading "${file.name}"...`;
-  subEl.innerText = "Scanning PDF for amount and customer details...";
+  titleEl.innerText = `Scanning "${file.name}"...`;
+  subEl.innerText = "Step 1: Reading digital text layer...";
   banner.classList.add("hidden");
 
   try {
@@ -120,78 +115,174 @@ async function handlePdfUpload(event) {
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     let rawText = "";
 
-    // Loop through every page in the PDF and grab the text
+    // STAGE 1: Extract digital text sorted top-to-bottom, left-to-right
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
       const content = await page.getTextContent();
-      rawText += content.items.map(item => item.str).join(" ") + "\n";
+
+      const sortedItems = content.items.slice().sort((a, b) => {
+        const yDiff = b.transform[5] - a.transform[5];
+        if (Math.abs(yDiff) > 4) return yDiff;
+        return a.transform[4] - b.transform[4];
+      });
+
+      let lastY = null;
+      for (const item of sortedItems) {
+        const currentY = item.transform[5];
+        if (lastY !== null && Math.abs(currentY - lastY) > 6) {
+          rawText += "\n";
+        } else if (lastY !== null) {
+          rawText += " ";
+        }
+        rawText += item.str;
+        lastY = currentY;
+      }
+      rawText += "\n";
     }
 
-    // Clear any old yellow highlight borders
+    // STAGE 2: If OPay exported an image-based PDF, run OCR on the canvas image!
+    let usedOcr = false;
+    if (rawText.replace(/\s+/g, "").length < 20 && window.Tesseract) {
+      usedOcr = true;
+      titleEl.innerText = `OPay Image PDF Detected — Running Smart OCR...`;
+      subEl.innerText = "Reading receipt image (takes about 3 to 5 seconds)...";
+
+      const page = await pdf.getPage(1);
+      const viewport = page.getViewport({ scale: 2.2 });
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+
+      await page.render({ canvasContext: ctx, viewport }).promise;
+
+      const ocrResult = await Tesseract.recognize(canvas, "eng");
+      rawText = ocrResult.data.text || "";
+    }
+
     ["counterpartyName", "counterpartyTin", "contractTitle", "contractAmount"].forEach(id => {
       document.getElementById(id).classList.remove("needs-manual-review");
     });
 
-    // 1. Find Amount (Looks for ₦, NGN, Amount, or Total)
-    const amountRegex = /(?:₦|NGN|Amount\s*[:\-]?|Total\s*[:\-]?)\s*([\d,]+(?:\.\d{2})?)/i;
-    const amountMatch = rawText.match(amountRegex);
-    let foundAmount = null;
-    if (amountMatch && amountMatch[1]) {
-      const parsed = parseFloat(amountMatch[1].replace(/,/g, ""));
-      if (parsed > 0) foundAmount = parsed;
-    }
-
-    // 2. Find Customer / Sender Name
-    const partyRegex = /(?:Sender|From|Customer|Beneficiary|Payer|Account Name)\s*[:\-]?\s*([A-Za-z0-9\s.&\-]{3,35})/i;
-    const partyMatch = rawText.match(partyRegex);
-    const foundParty = partyMatch ? partyMatch[1].trim() : "";
-
-    // 3. Find Description / Narration
-    const descRegex = /(?:Narration|Description|Remark|Remarks|Reference|Purpose)\s*[:\-]?\s*([A-Za-z0-9\s\/\-]{3,45})/i;
-    const descMatch = rawText.match(descRegex);
-    const cleanFileName = file.name.replace(/\.pdf$/i, "").slice(0, 35);
-    const foundDesc = descMatch ? descMatch[1].trim() : `Receipt: ${cleanFileName}`;
+    const parsed = extractNigerianReceiptData(rawText, file.name);
 
     const amountInput = document.getElementById("contractAmount");
     const nameInput = document.getElementById("counterpartyName");
     const tinInput = document.getElementById("counterpartyTin");
     const titleInput = document.getElementById("contractTitle");
 
-    if (foundAmount) amountInput.value = foundAmount;
-    else amountInput.classList.add("needs-manual-review");
+    if (parsed.amount) {
+      amountInput.value = parsed.amount;
+    } else {
+      amountInput.value = "";
+      amountInput.classList.add("needs-manual-review");
+    }
 
-    if (foundParty) nameInput.value = foundParty;
-    else nameInput.classList.add("needs-manual-review");
+    if (parsed.party) {
+      nameInput.value = parsed.party;
+    } else {
+      nameInput.value = "";
+      nameInput.classList.add("needs-manual-review");
+    }
 
-    titleInput.value = foundDesc;
+    titleInput.value = parsed.description;
 
-    // Bank receipts don't show the buyer's TIN, so highlight it in yellow for the user to type
-    if (!tinInput.value) tinInput.classList.add("needs-manual-review");
+    if (!tinInput.value) {
+      tinInput.classList.add("needs-manual-review");
+    }
 
-    // Since this is a past receipt, turn on "Already Paid" automatically
     document.getElementById("alreadyPaidToggle").checked = true;
     document.getElementById("enableEscrowToggle").checked = false;
 
-    titleEl.innerText = `✓ Scanned: ${cleanFileName}.pdf`;
-    subEl.innerText = "Tap here anytime to pick a different PDF file.";
+    const cleanFileName = file.name.replace(/\.pdf$/i, "").slice(0, 32);
+    titleEl.innerText = `✓ Scanned: ${cleanFileName}.pdf ${usedOcr ? "(via Image OCR)" : ""}`;
+    subEl.innerText = "Tap here anytime to scan a different PDF receipt.";
 
+    const safePreviewText = rawText.trim().replace(/</g, "&lt;").replace(/>/g, "&gt;") || "(No readable text found)";
     banner.classList.remove("hidden");
-    if (rawText.trim().length < 10) {
-      banner.innerHTML = `<strong>Note:</strong> This PDF looks like a camera photo rather than a digital receipt. Please fill in the yellow-highlighted boxes below.`;
-    } else {
-      banner.innerHTML = `<strong>Receipt Scanned!</strong> We filled in the details we found. Please complete any <span style="color:#fbbf24;font-weight:700;">yellow-highlighted boxes</span> (like Buyer TIN/Phone).`;
-    }
+    banner.innerHTML = `
+      <div>
+        <strong>Receipt Processed!</strong> ${parsed.amount ? `Found Amount: <strong>${formatNGN(parsed.amount)}</strong>.` : "Could not auto-detect the amount."}
+        Please check any <span style="color:#fbbf24;font-weight:700;">yellow-highlighted boxes</span> below.
+      </div>
+      <details style="margin-top:8px; font-size:0.75rem; color:#94a3b8; cursor:pointer;">
+        <summary>🔍 View raw text extracted from this PDF</summary>
+        <pre style="margin-top:6px; padding:8px; background:rgba(0,0,0,0.5); border-radius:6px; white-space:pre-wrap; color:#cbd5e1; max-height:140px; overflow-y:auto;">${safePreviewText}</pre>
+      </details>
+    `;
 
     updateContractTelemetry();
   } catch (err) {
     console.error("PDF scan error:", err);
-    titleEl.innerText = "Could not read this PDF file";
-    subEl.innerText = "Please type the details manually below or try another PDF.";
+    titleEl.innerText = "Could not scan this PDF";
+    subEl.innerText = "Please type the details below or try another receipt.";
   }
 }
 
+function extractNigerianReceiptData(text, fileName) {
+  const cleanText = text.replace(/\r/g, "");
+
+  let foundAmount = null;
+  const explicitAmountRegex = /(?:₦|NGN|Naira|Amount|Total|Paid)\s*[:\-]?\s*[₦N]?\s*([\d,]{1,3}(?:,\d{3})+(?:\.\d{2})?|\d{3,}(?:\.\d{2})?)/i;
+  const explicitMatch = cleanText.match(explicitAmountRegex);
+
+  if (explicitMatch && explicitMatch[1]) {
+    const val = parseFloat(explicitMatch[1].replace(/,/g, ""));
+    if (val >= 50 && val < 10000000000) foundAmount = val;
+  }
+
+  if (!foundAmount) {
+    const decimalMatches = [...cleanText.matchAll(/\b(\d{1,3}(?:,\d{3})+\.\d{2}|\d{3,}\.\d{2})\b/g)];
+    for (const m of decimalMatches) {
+      const val = parseFloat(m[1].replace(/,/g, ""));
+      if (val >= 50 && val < 10000000000) {
+        foundAmount = val;
+        break;
+      }
+    }
+  }
+
+  let foundParty = "";
+  const partyPatterns = [
+    /(?:Sender\s*Details|Recipient\s*Details|Sender\s*Name|Beneficiary\s*Name|Customer\s*Name|From|Sent\s*By|Paid\s*By)\s*[:\-]?\s*\n?\s*([A-Z][A-Za-z\s.&\-]{3,38})/i,
+    /(?:Sender|Recipient|Beneficiary|Customer)\s*[:\-]\s*([A-Za-z0-9\s.&\-]{3,38})/i
+  ];
+
+  for (const pattern of partyPatterns) {
+    const match = cleanText.match(pattern);
+    if (match && match[1]) {
+      foundParty = match[1].split(/\n|\||OPay|Moniepoint|GTBank|Zenith|Access|UBA|First\s*Bank|\d{4,}/i)[0].trim();
+      if (foundParty.length >= 3) break;
+    }
+  }
+
+  let foundDesc = "";
+  const descMatch = cleanText.match(/(?:Remark|Remarks|Narration|Description|Purpose|Payment\s*Type)\s*[:\-]?\s*([A-Za-z0-9\s\/\-.,]{3,45})/i);
+  if (descMatch && descMatch[1]) {
+    foundDesc = descMatch[1].split("\n")[0].trim();
+  }
+
+  const txNoMatch = cleanText.match(/(?:Transaction\s*No\.?|Session\s*ID|Reference|Ref\s*No\.?)\s*[:\-]?\s*([A-Za-z0-9]{8,35})/i);
+  const txRef = txNoMatch ? ` (Ref: ${txNoMatch[1]})` : "";
+
+  const isOpay = /OPay/i.test(cleanText);
+  const cleanName = fileName.replace(/\.pdf$/i, "").slice(0, 28);
+
+  if (!foundDesc || foundDesc.length < 3) {
+    foundDesc = `${isOpay ? "OPay Transfer Receipt" : "Bank Receipt"}${txRef || ` - ${cleanName}`}`;
+  } else if (txRef && !foundDesc.includes("Ref:")) {
+    foundDesc = `${foundDesc}${txRef}`;
+  }
+
+  return {
+    amount: foundAmount,
+    party: foundParty,
+    description: foundDesc
+  };
+}
+
 /* =========================================================
-   4. LIVE PAYMENT SUMMARY CALCULATOR
+   4. LIVE PAYMENT SUMMARY & ESCROW "UNDER CONSTRUCTION" HANDLER
    ========================================================= */
 function updateContractTelemetry() {
   const base = parseFloat(document.getElementById("contractAmount").value) || 0;
@@ -199,72 +290,51 @@ function updateContractTelemetry() {
   const alreadyPaid = document.getElementById("alreadyPaidToggle").checked;
   const applyTaxes = document.getElementById("applyTaxesToggle").checked;
   const escrowToggle = document.getElementById("enableEscrowToggle");
-  const escrowMasterRow = document.getElementById("escrowMasterRow");
   const submitBtn = document.getElementById("submitContractBtn");
 
-  // If the user toggled "Already Paid", hide Escrow options
-  if (alreadyPaid) {
-    escrowToggle.checked = false;
-    escrowMasterRow.style.opacity = "0.45";
-    escrowMasterRow.style.pointerEvents = "none";
-    submitBtn.innerText = "Save Receipt Directly to Tax Records \u2192";
+  const drawer = document.getElementById("escrowFunctionsDrawer");
+  if (escrowToggle.checked) {
+    drawer.classList.remove("hidden");
   } else {
-    escrowMasterRow.style.opacity = "1";
-    escrowMasterRow.style.pointerEvents = "auto";
-    submitBtn.innerText = "Create Invoice & Payment Link \u2192";
+    drawer.classList.add("hidden");
   }
 
-  const escrowEnabled = escrowToggle.checked;
-  const feeSplit = document.getElementById("escrowFeeSplit").value;
-
-  // Show or hide the Preceding Escrow Settings drawer
-  const drawer = document.getElementById("escrowFunctionsDrawer");
-  if (escrowEnabled) drawer.classList.remove("hidden");
-  else drawer.classList.add("hidden");
+  if (alreadyPaid) {
+    submitBtn.innerText = "Save Receipt to Tax Records \u2192";
+  } else {
+    submitBtn.innerText = "Create Customer Invoice \u2192";
+  }
 
   const vat = applyTaxes ? Math.round(base * 0.075) : 0;
   const whtRate = taxType === "services" ? 0.05 : taxType === "goods" ? 0.02 : 0;
   const wht = applyTaxes ? Math.round(base * whtRate) : 0;
-
-  const totalEscrowFee = escrowEnabled ? Math.round(base * 0.015) : 0;
-  let buyerEscrowFee = 0;
-  if (escrowEnabled) {
-    if (feeSplit === "50_50") buyerEscrowFee = Math.round(totalEscrowFee / 2);
-    if (feeSplit === "BUYER") buyerEscrowFee = totalEscrowFee;
-  }
-
-  const netPayable = base + vat - wht + buyerEscrowFee;
+  const netPayable = base + vat - wht;
 
   document.getElementById("prevBaseVal").innerText = formatNGN(base);
   document.getElementById("prevVatVal").innerText = `+ ${formatNGN(vat)}`;
   document.getElementById("prevWhtVal").innerText = `- ${formatNGN(wht)} (${whtRate * 100}%)`;
-
-  const feeRow = document.getElementById("prevEscrowFeeRow");
-  feeRow.style.display = escrowEnabled ? "flex" : "none";
-  document.getElementById("prevEscrowFeeVal").innerText = `+ ${formatNGN(buyerEscrowFee)}`;
   document.getElementById("prevNetPayable").innerText = formatNGN(netPayable);
 
   const modeTitle = document.getElementById("previewModeTitle");
   const modeDesc = document.getElementById("previewModeDesc");
 
-  if (alreadyPaid) {
-    modeTitle.innerText = "✓ PAST RECEIPT LOG";
+  if (escrowToggle.checked) {
+    modeTitle.innerText = "🚧 ESCROW UNDER CONSTRUCTION";
+    modeTitle.style.color = "#fbbf24";
+    modeDesc.innerText = "Escrow holding is currently under construction. This entry will be saved as a standard invoice or tax record.";
+  } else if (alreadyPaid) {
+    modeTitle.innerText = "✓ DIRECT TAX RECORD LOG";
     modeTitle.style.color = "#34d399";
     modeDesc.innerText = "Saves straight to your FIRS Tax Records as a completed sale.";
-  } else if (escrowEnabled) {
-    const windowVal = document.getElementById("escrowWindow").value;
-    modeTitle.innerText = "⛨ PAYSTACK ESCROW (24H TIMER + 4-DIGIT PIN)";
-    modeTitle.style.color = "#38bdf8";
-    modeDesc.innerText = `Buyer pays into Paystack Escrow. You have ${windowVal} to ship, and you'll enter the buyer's 4-digit PIN on delivery to get paid.`;
   } else {
-    modeTitle.innerText = "DIRECT PAYMENT LINK";
-    modeTitle.style.color = "#94a3b8";
-    modeDesc.innerText = "Creates a regular payment link without an escrow hold.";
+    modeTitle.innerText = "PENDING CUSTOMER INVOICE";
+    modeTitle.style.color = "#38bdf8";
+    modeDesc.innerText = "Creates an invoice you can mark as paid once the customer sends your money.";
   }
 }
 
 /* =========================================================
-   5. CREATE NEW DEAL OR SAVE RECEIPT
+   5. SAVE NEW SALE OR RECEIPT
    ========================================================= */
 function handleContractSubmit(e) {
   e.preventDefault();
@@ -275,14 +345,10 @@ function handleContractSubmit(e) {
   const taxType = document.getElementById("contractTaxType").value;
   const alreadyPaid = document.getElementById("alreadyPaidToggle").checked;
   const applyTaxes = document.getElementById("applyTaxesToggle").checked;
-  const escrowEnabled = document.getElementById("enableEscrowToggle").checked;
 
   const vat = applyTaxes ? Math.round(base * 0.075) : 0;
   const whtRate = taxType === "services" ? 0.05 : taxType === "goods" ? 0.02 : 0;
   const wht = applyTaxes ? Math.round(base * whtRate) : 0;
-  const feeSplit = document.getElementById("escrowFeeSplit").value;
-  const totalEscrowFee = escrowEnabled ? Math.round(base * 0.015) : 0;
-  const buyerFee = escrowEnabled ? (feeSplit === "50_50" ? Math.round(totalEscrowFee / 2) : feeSplit === "BUYER" ? totalEscrowFee : 0) : 0;
 
   const newContract = {
     id: "DEAL-" + Math.floor(100000 + Math.random() * 900000),
@@ -293,23 +359,13 @@ function handleContractSubmit(e) {
     base,
     vat,
     wht,
-    buyerFee,
-    payable: base + vat - wht + buyerFee,
-    escrowEnabled,
-    inspectionWindow: escrowEnabled ? document.getElementById("escrowWindow").value : "24 Hours",
-    releaseCondition: "4-Digit Buyer Delivery PIN",
-    waybillNote: escrowEnabled ? (document.getElementById("escrowWaybillRef").value.trim() || "Standard Delivery") : "Direct",
-    virtualAccount: "99" + Math.floor(10000000 + Math.random() * 90000000),
-    waybillDispatchedId: alreadyPaid ? "RECEIPT-LOGGED" : null,
-    deliveryPin: null,      // Generated when buyer pays
-    dispatchDeadline: null, // Set to 24 hours from payment timestamp
+    payable: base + vat - wht,
     status: alreadyPaid ? "SETTLED" : "AWAITING_DEPOSIT"
   };
 
   contracts.unshift(newContract);
   saveState();
 
-  // Reset form
   e.target.reset();
   ["counterpartyName", "counterpartyTin", "contractTitle", "contractAmount"].forEach(id => {
     document.getElementById(id).classList.remove("needs-manual-review");
@@ -318,7 +374,7 @@ function handleContractSubmit(e) {
   document.getElementById("pdfUploadTitle").innerText = "Tap here to choose a PDF receipt from your device";
   document.getElementById("pdfUploadSub").innerText = "Works with OPay, Moniepoint, GTBank, Zenith, Access, and Kuda PDFs";
   document.getElementById("applyTaxesToggle").checked = true;
-  document.getElementById("alreadyPaidToggle").checked = false;
+  document.getElementById("alreadyPaidToggle").checked = true;
   document.getElementById("enableEscrowToggle").checked = false;
 
   updateContractTelemetry();
@@ -326,32 +382,48 @@ function handleContractSubmit(e) {
 }
 
 /* =========================================================
-   6. RENDER DASHBOARD, ACTIVE DEALS & TAX RECORDS
+   6. RENDER DASHBOARD, WALKTHROUGH & EMPTY STATES
    ========================================================= */
 function renderAllViews() {
-  let activeEscrowSum = 0;
-  let activeEscrowCount = 0;
+  let pendingSum = 0;
+  let pendingCount = 0;
   let settledRevenue = 0;
+  let settledCount = 0;
   let settledVat = 0;
   let settledWht = 0;
 
   contracts.forEach(c => {
-    if (c.status === "AWAITING_DEPOSIT" || c.status === "VAULT_LOCKED" || c.status === "DISPATCHED_INSPECTION") {
-      activeEscrowSum += c.payable;
-      activeEscrowCount++;
-    } else if (c.status === "SETTLED") {
+    if (c.status !== "SETTLED") {
+      pendingSum += c.payable;
+      pendingCount++;
+    } else {
       settledRevenue += c.base;
       settledVat += c.vat;
       settledWht += c.wht;
+      settledCount++;
     }
   });
 
-  document.getElementById("kpiEscrowLocked").innerText = formatNGN(activeEscrowSum);
-  document.getElementById("kpiEscrowCountLabel").innerText = `${activeEscrowCount} deal(s) in progress`;
+  const walkthroughEl = document.getElementById("walkthroughBanner");
+  if (contracts.length === 0 && !guideHidden) {
+    walkthroughEl.classList.remove("hidden");
+  } else if (guideHidden) {
+    walkthroughEl.classList.add("hidden");
+  }
+
+  document.getElementById("kpiEscrowLocked").innerText = formatNGN(pendingSum);
+  document.getElementById("kpiEscrowCountLabel").innerText = pendingCount === 0
+    ? "No unpaid invoices"
+    : `${pendingCount} unpaid invoice(s)`;
+
   document.getElementById("kpiGrossRevenue").innerText = formatNGN(settledRevenue);
+  document.getElementById("kpiRevenueFoot").innerText = settledCount === 0
+    ? "Log a sale or PDF to start"
+    : `Across ${settledCount} completed sale(s)`;
+
   document.getElementById("kpiVatLiability").innerText = formatNGN(settledVat);
   document.getElementById("kpiWhtCredits").innerText = formatNGN(settledWht);
-  document.getElementById("navEscrowCount").innerText = activeEscrowCount;
+  document.getElementById("navEscrowCount").innerText = pendingCount;
 
   document.getElementById("profLimitRatio").innerText = `${formatNGN(settledRevenue)} / ₦100,000,000`;
   const pct = Math.min(100, (settledRevenue / 100000000) * 100);
@@ -359,14 +431,26 @@ function renderAllViews() {
 
   const recentHost = document.getElementById("dashboardRecentList");
   if (contracts.length === 0) {
-    recentHost.innerHTML = `<div class="empty-box">No deals or receipts yet. Tap <strong>+ Add Sale or Receipt</strong> to get started.</div>`;
+    recentHost.innerHTML = `
+      <div class="empty-box">
+        <h4>Your ledger is currently at ₦0</h4>
+        <p>Start by uploading a digital PDF bank receipt (OPay, Moniepoint, GTBank, etc.) or logging your first sale manually. We'll calculate your VAT and WHT automatically.</p>
+        <button type="button" class="btn-silver-primary" onclick="switchView('create')">+ Upload Receipt or Add Sale</button>
+      </div>
+    `;
   } else {
     recentHost.innerHTML = contracts.slice(0, 4).map(c => buildContractCardHTML(c)).join("");
   }
 
   const vaultHost = document.getElementById("escrowVaultList");
   if (contracts.length === 0) {
-    vaultHost.innerHTML = `<div class="empty-box">No active deals yet. Create a sale on the 'Add Sale / PDF' tab to see it here.</div>`;
+    vaultHost.innerHTML = `
+      <div class="empty-box">
+        <h4>No invoices or sales logged yet</h4>
+        <p>When you create an invoice or log a receipt on the <strong>Add Sale / PDF</strong> page, it will appear here so you can track its payment status.</p>
+        <button type="button" class="btn-outline-sm" onclick="switchView('create')">+ Create Your First Entry</button>
+      </div>
+    `;
   } else {
     vaultHost.innerHTML = contracts.map(c => buildContractCardHTML(c)).join("");
   }
@@ -374,7 +458,14 @@ function renderAllViews() {
   const taxBody = document.getElementById("taxLedgerTableBody");
   const settledList = contracts.filter(c => c.status === "SETTLED");
   if (settledList.length === 0) {
-    taxBody.innerHTML = `<tr><td colspan="7" class="empty-box">No completed sales yet. Upload a paid PDF receipt or finish an escrow deal to see your tax records here.</td></tr>`;
+    taxBody.innerHTML = `
+      <tr>
+        <td colspan="7" class="empty-box">
+          <h4>No completed tax records yet</h4>
+          <p>Log a paid receipt or mark an invoice as paid to populate your FIRS TaxPro Max schedule.</p>
+        </td>
+      </tr>
+    `;
   } else {
     taxBody.innerHTML = settledList.map(c => `
       <tr>
@@ -391,162 +482,61 @@ function renderAllViews() {
 }
 
 function buildContractCardHTML(c) {
-  const statusMap = {
-    AWAITING_DEPOSIT: ["status-awaiting", "1. Waiting for Payment"],
-    VAULT_LOCKED: ["status-locked", "2. Paid • 24h Ship Timer"],
-    DISPATCHED_INSPECTION: ["status-dispatched", "3. Shipped • Enter 4-Digit PIN"],
-    SETTLED: ["status-settled", "4. Completed & Tax Logged"],
-    REFUNDED: ["status-refunded", "✕ Refunded to Buyer (24h Expired)"]
-  };
-  const [pillClass, pillLabel] = statusMap[c.status] || statusMap.AWAITING_DEPOSIT;
+  const isSettled = c.status === "SETTLED";
+  const pillClass = isSettled ? "status-settled" : "status-awaiting";
+  const pillLabel = isSettled ? "✓ Paid & Tax Logged" : "⏳ Unpaid Invoice";
 
   return `
     <div class="vault-item">
       <div class="vault-meta">
         <h4>${c.title}</h4>
         <div class="vault-sub">
-          ${c.counterparty} • <span class="mono">${c.id}</span>
+          ${c.counterparty} • <span class="mono">${c.id}</span> • ${c.createdAt}
         </div>
       </div>
       <div class="vault-actions">
         <div class="mono" style="font-weight:700; font-size:0.98rem;">${formatNGN(c.payable)}</div>
         <span class="status-pill ${pillClass}">${pillLabel}</span>
-        <button type="button" class="btn-outline-sm" onclick="openContractModal('${c.id}')">Manage Deal &rarr;</button>
+        <button type="button" class="btn-outline-sm" onclick="openContractModal('${c.id}')">View Details &rarr;</button>
       </div>
     </div>
   `;
 }
 
 /* =========================================================
-   7. POPUP MODAL + 24H LIVE TIMER + 4-DIGIT PIN VERIFICATION
+   7. DEAL DETAILS MODAL
    ========================================================= */
 function closeContractModal() {
-  if (countdownTimerInterval) {
-    clearInterval(countdownTimerInterval);
-    countdownTimerInterval = null;
-  }
-  activeModalContractId = null;
   document.getElementById("escrowModal").classList.add("hidden");
 }
 
 window.openContractModal = function(contractId) {
-  // Clear any old running timer first
-  if (countdownTimerInterval) {
-    clearInterval(countdownTimerInterval);
-    countdownTimerInterval = null;
-  }
-
-  activeModalContractId = contractId;
   const c = contracts.find(item => item.id === contractId);
   if (!c) return;
 
-  document.getElementById("modalContractId").innerText = `${c.id} • Paystack Account: ${c.virtualAccount}`;
+  document.getElementById("modalContractId").innerText = `${c.id} • Date: ${c.createdAt}`;
   document.getElementById("modalContractTitle").innerText = c.title;
-
-  const stages = ["AWAITING_DEPOSIT", "VAULT_LOCKED", "DISPATCHED_INSPECTION", "SETTLED"];
-  const labels = ["1. Payment", "2. 24h Ship Timer", "3. 4-Digit PIN", "4. Paid Out"];
-  const currentIdx = stages.indexOf(c.status);
-
-  document.getElementById("modalStepper").innerHTML = labels.map((lbl, idx) => {
-    const cls = c.status === "REFUNDED" ? "" : (idx < currentIdx ? "done" : idx === currentIdx ? "active" : "");
-    return `<div class="step-node ${cls}">${lbl}</div>`;
-  }).join("");
 
   const body = document.getElementById("modalDynamicBody");
 
-  // STAGE 1: WAITING FOR BUYER PAYMENT
-  if (c.status === "AWAITING_DEPOSIT") {
+  if (c.status !== "SETTLED") {
     body.innerHTML = `
-      <p class="text-muted">Share this official <strong>Paystack-Titan</strong> account number with <strong>${c.counterparty}</strong>. Their bank app will show <strong>"PAYSTACK / FREEBEE"</strong> so they know their money is protected.</p>
+      <p class="text-muted">This invoice for <strong>${c.counterparty}</strong> is currently marked as unpaid. Once the customer pays into your bank account (${companyProfile.bank} • ${companyProfile.account}), click below to move it into your FIRS Tax Records.</p>
       <div class="va-terminal">
-        <div class="text-muted" style="font-size:0.75rem;">PAYSTACK-TITAN ESCROW ACCOUNT</div>
-        <div class="mono" style="font-size:1.45rem; font-weight:800; margin:6px 0;">${c.virtualAccount}</div>
-        <div class="mono silver-highlight">Exact Amount: ${formatNGN(c.payable)}</div>
+        <div class="text-muted" style="font-size:0.75rem;">INVOICE BREAKDOWN</div>
+        <div class="mono" style="font-size:1.35rem; font-weight:800; margin:6px 0;">${formatNGN(c.payable)}</div>
+        <div class="text-muted mono" style="font-size:0.76rem;">Base: ${formatNGN(c.base)} | VAT: ${formatNGN(c.vat)} | WHT: ${formatNGN(c.wht)}</div>
       </div>
-      <button type="button" class="btn-silver-primary full-width" onclick="simulateBuyerPayment('${c.id}')">
-        Test: Buyer Has Paid into Paystack &rarr;
+      <button type="button" class="btn-silver-primary full-width" onclick="markInvoicePaid('${c.id}')">
+        ✓ Mark Invoice as Paid & Add to Tax Records &rarr;
       </button>
     `;
-  }
-
-  // STAGE 2: MONEY LOCKED IN ESCROW (24-HOUR SHIPPING COUNTDOWN)
-  else if (c.status === "VAULT_LOCKED") {
-    body.innerHTML = `
-      <p class="text-muted"><strong>${formatNGN(c.payable)}</strong> is locked safely in Paystack. You must send the goods and enter the waybill number before the 24-hour timer hits zero, or Paystack automatically refunds the buyer.</p>
-
-      <!-- Live 24-Hour Countdown Display -->
-      <div class="timer-box">
-        <div style="font-size:0.74rem; color:#fcd34d; font-weight:700;">⏳ TIME LEFT TO SHIP BEFORE AUTO-REFUND</div>
-        <div id="liveCountdownDisplay" class="timer-digits mono">23h 59m 59s</div>
-        <button type="button" class="btn-outline-sm" style="margin-top:6px; font-size:0.72rem;" onclick="simulateTimerExpiry('${c.id}')">
-          Test: Fast-Forward 24h Expiry (Trigger Refund)
-        </button>
-      </div>
-
-      <!-- Shows the Buyer's Secret 4-Digit PIN for Demo Testing -->
-      <div class="buyer-pin-badge">
-        <div>
-          <strong style="color:#e0f2fe;">📱 Buyer's Secret Delivery PIN (Demo View)</strong>
-          <div class="text-muted" style="font-size:0.73rem;">Paystack sent this PIN to ${c.counterparty}. You will need it on delivery.</div>
-        </div>
-        <span class="pin-code-display mono">${c.deliveryPin}</span>
-      </div>
-
-      <div class="input-group" style="margin-top:12px;">
-        <label>Enter Waybill Number or Dispatch Rider Phone *</label>
-        <input type="text" id="waybillInput" placeholder="e.g., GIG Logistics #884920 or Rider 0803...">
-      </div>
-      <button type="button" class="btn-silver-primary full-width" onclick="confirmWaybillDispatch('${c.id}')">
-        Save Waybill & Stop Refund Timer &rarr;
-      </button>
-    `;
-
-    // Start ticking the 24-hour countdown every second
-    startLiveCountdown(c.id);
-  }
-
-  // STAGE 3: OUT FOR DELIVERY (SELLER ENTERS BUYER'S 4-DIGIT PIN)
-  else if (c.status === "DISPATCHED_INSPECTION") {
-    body.innerHTML = `
-      <p class="text-muted">Waybill (<strong>${c.waybillDispatchedId}</strong>) is logged and the 24-hour refund timer is stopped. Once <strong>${c.counterparty}</strong> inspects the goods, ask them for their <strong>4-Digit Delivery PIN</strong> to unlock your money.</p>
-
-      <!-- Reminder of the Buyer's PIN so you can test typing it in -->
-      <div class="buyer-pin-badge">
-        <div>
-          <strong style="color:#e0f2fe;">📱 Buyer's 4-Digit PIN (For Your Testing)</strong>
-          <div class="text-muted" style="font-size:0.73rem;">Type this code below to test unlocking the payout:</div>
-        </div>
-        <span class="pin-code-display mono">${c.deliveryPin}</span>
-      </div>
-
-      <div class="input-group" style="margin-top:14px;">
-        <label>Enter Buyer's 4-Digit Delivery PIN *</label>
-        <input type="text" id="pinVerifyInput" maxlength="4" class="pin-input-field mono" placeholder="••••">
-        <div id="pinErrorMsg" class="error-msg hidden">❌ Wrong PIN! Ask the buyer for the exact 4-digit code.</div>
-      </div>
-
-      <button type="button" class="btn-silver-primary full-width" onclick="verifyPinAndRelease('${c.id}')">
-        Verify 4-Digit PIN & Send Money to My Bank &rarr;
-      </button>
-    `;
-  }
-
-  // STAGE 4: COMPLETED & SETTLED
-  else if (c.status === "SETTLED") {
+  } else {
     body.innerHTML = `
       <div class="va-terminal" style="border-color:rgba(16,185,129,0.4);">
-        <div style="color:#34d399; font-weight:700; margin-bottom:6px;">✓ PIN VERIFIED — PAID TO ${companyProfile.bank.toUpperCase()}</div>
-        <p class="text-muted" style="font-size:0.82rem;">Paystack has released your payout. Your Sale Price (${formatNGN(c.base)}), VAT (${formatNGN(c.vat)}), and WHT Credit (${formatNGN(c.wht)}) are now saved in your FIRS Tax Records.</p>
-      </div>
-    `;
-  }
-
-  // REFUNDED STATE (IF 24-HOUR TIMER EXPIRED)
-  else if (c.status === "REFUNDED") {
-    body.innerHTML = `
-      <div class="va-terminal" style="border-color:rgba(239,68,68,0.45);">
-        <div style="color:#f87171; font-weight:700; margin-bottom:6px;">✕ AUTOMATICALLY REFUNDED TO BUYER</div>
-        <p class="text-muted" style="font-size:0.82rem;">No waybill was uploaded within the 24-hour shipping window, so Paystack automatically refunded <strong>${formatNGN(c.payable)}</strong> back to <strong>${c.counterparty}</strong>.</p>
+        <div style="color:#34d399; font-weight:700; margin-bottom:6px;">✓ PAID & RECORDED IN TAX LEDGER</div>
+        <p class="text-muted" style="font-size:0.82rem;">Customer: <strong>${c.counterparty}</strong> (${c.counterpartyTin})</p>
+        <p class="text-muted mono" style="font-size:0.8rem; margin-top:8px;">Sale Price: ${formatNGN(c.base)} | VAT: ${formatNGN(c.vat)} | WHT Credit: ${formatNGN(c.wht)}</p>
       </div>
     `;
   }
@@ -554,94 +544,13 @@ window.openContractModal = function(contractId) {
   document.getElementById("escrowModal").classList.remove("hidden");
 };
 
-// Step 1 -> Step 2: Buyer pays, generate 4-digit PIN & set 24-hour deadline
-window.simulateBuyerPayment = function(id) {
-  const c = contracts.find(item => item.id === id);
-  if (!c) return;
-
-  c.deliveryPin = String(Math.floor(1000 + Math.random() * 9000)); // Random 4-digit PIN (e.g. 4829)
-  c.dispatchDeadline = Date.now() + (24 * 60 * 60 * 1000);         // 24 hours from right now
-  c.status = "VAULT_LOCKED";
-
-  saveState();
-  renderAllViews();
-  openContractModal(id);
-};
-
-// Live 1-second countdown function for Stage 2
-function startLiveCountdown(id) {
-  function updateClock() {
-    const c = contracts.find(item => item.id === id);
-    const displayEl = document.getElementById("liveCountdownDisplay");
-    if (!c || !displayEl || c.status !== "VAULT_LOCKED") {
-      clearInterval(countdownTimerInterval);
-      return;
-    }
-
-    const msLeft = (c.dispatchDeadline || 0) - Date.now();
-    if (msLeft <= 0) {
-      // Timer hit 00:00:00 -> Auto-refund buyer!
-      clearInterval(countdownTimerInterval);
-      c.status = "REFUNDED";
-      saveState();
-      renderAllViews();
-      openContractModal(id);
-      return;
-    }
-
-    const hours = Math.floor(msLeft / (1000 * 60 * 60));
-    const mins = Math.floor((msLeft % (1000 * 60 * 60)) / (1000 * 60));
-    const secs = Math.floor((msLeft % (1000 * 60)) / 1000);
-
-    displayEl.innerText = `${String(hours).padStart(2, "0")}h ${String(mins).padStart(2, "0")}m ${String(secs).padStart(2, "0")}s`;
-  }
-
-  updateClock();
-  countdownTimerInterval = setInterval(updateClock, 1000);
-}
-
-// Demo button to test what happens when the 24-hour timer runs out
-window.simulateTimerExpiry = function(id) {
-  const c = contracts.find(item => item.id === id);
-  if (!c) return;
-  c.dispatchDeadline = Date.now() - 1000; // Set deadline to 1 second ago
-  c.status = "REFUNDED";
-  saveState();
-  renderAllViews();
-  openContractModal(id);
-};
-
-// Step 2 -> Step 3: Seller saves waybill and stops the 24-hour refund clock
-window.confirmWaybillDispatch = function(id) {
-  const wb = document.getElementById("waybillInput").value.trim();
-  if (!wb) {
-    alert("Please enter a waybill number or dispatch rider phone number first.");
-    return;
-  }
+window.markInvoicePaid = function(id) {
   const c = contracts.find(item => item.id === id);
   if (c) {
-    c.waybillDispatchedId = wb;
-    c.status = "DISPATCHED_INSPECTION";
-    saveState();
-    renderAllViews();
-    openContractModal(id);
-  }
-};
-
-// Step 3 -> Step 4: Seller types the Buyer's 4-Digit PIN to release the payout
-window.verifyPinAndRelease = function(id) {
-  const typedPin = document.getElementById("pinVerifyInput").value.trim();
-  const errorEl = document.getElementById("pinErrorMsg");
-  const c = contracts.find(item => item.id === id);
-  if (!c) return;
-
-  if (typedPin === c.deliveryPin) {
     c.status = "SETTLED";
     saveState();
     renderAllViews();
     openContractModal(id);
-  } else {
-    errorEl.classList.remove("hidden");
   }
 };
 
@@ -672,7 +581,6 @@ function exportTaxCsv() {
    9. SET UP ALL BUTTON LISTENERS WHEN PAGE LOADS
    ========================================================= */
 document.addEventListener("DOMContentLoaded", () => {
-  // Save Business Setup Form
   document.getElementById("onboardingForm").addEventListener("submit", (e) => {
     e.preventDefault();
     companyProfile = {
@@ -689,7 +597,6 @@ document.addEventListener("DOMContentLoaded", () => {
     initApp();
   });
 
-  // Edit Business Profile Button
   document.getElementById("resetProfileBtn").addEventListener("click", () => {
     if (confirm("Edit your business details? Your saved deals will still stay safe.")) {
       localStorage.removeItem(STORAGE_KEYS.PROFILE);
@@ -698,25 +605,36 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Sidebar / Bottom Bar Navigation
+  document.getElementById("dismissWalkthroughBtn").addEventListener("click", () => {
+    guideHidden = true;
+    localStorage.setItem(STORAGE_KEYS.GUIDE_HIDDEN, "true");
+    document.getElementById("walkthroughBanner").classList.add("hidden");
+  });
+
+  document.getElementById("showGuideAgainBtn").addEventListener("click", () => {
+    guideHidden = false;
+    localStorage.setItem(STORAGE_KEYS.GUIDE_HIDDEN, "false");
+    document.getElementById("walkthroughBanner").classList.remove("hidden");
+  });
+
+  document.getElementById("walkthroughStartBtn").addEventListener("click", () => switchView("create"));
+
   document.querySelectorAll(".nav-item").forEach(btn => {
     btn.addEventListener("click", () => switchView(btn.getAttribute("data-view")));
   });
 
   document.getElementById("dashNewContractBtn").addEventListener("click", () => switchView("create"));
+  document.getElementById("vaultAddSaleBtn").addEventListener("click", () => switchView("create"));
 
-  // PDF Receipt Upload Listener
   document.getElementById("pdfFileInput").addEventListener("change", handlePdfUpload);
 
-  // Remove yellow highlight as soon as user types into a field
   ["counterpartyName", "counterpartyTin", "contractTitle", "contractAmount"].forEach(id => {
     document.getElementById(id).addEventListener("input", (e) => {
       e.target.classList.remove("needs-manual-review");
     });
   });
 
-  // Live Payment Summary Listeners
-  ["contractAmount", "contractTaxType", "alreadyPaidToggle", "applyTaxesToggle", "enableEscrowToggle", "escrowWindow", "escrowCondition", "escrowFeeSplit"].forEach(id => {
+  ["contractAmount", "contractTaxType", "alreadyPaidToggle", "applyTaxesToggle", "enableEscrowToggle"].forEach(id => {
     const el = document.getElementById(id);
     if (el) {
       el.addEventListener("input", updateContractTelemetry);
@@ -727,11 +645,9 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("contractForm").addEventListener("submit", handleContractSubmit);
   document.getElementById("downloadTaxCsvBtn").addEventListener("click", exportTaxCsv);
 
-  // 4 Ways to Close the Popup Modal (Top Button, Bottom Button, Clicking Outside, Pressing Escape)
   document.getElementById("closeModalTopBtn").addEventListener("click", closeContractModal);
   document.getElementById("closeModalBottomBtn").addEventListener("click", closeContractModal);
   document.getElementById("escrowModal").addEventListener("click", (e) => {
-    // If user clicked the dark backdrop outside the card, close the modal
     if (e.target.id === "escrowModal") {
       closeContractModal();
     }
