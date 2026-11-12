@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>freebee — Smart Invoicing & Easy Tax Records</title>
+  <title>freebee — Smart Sales & Tax Records for Nigerian Businesses</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -16,7 +16,8 @@
 <body>
 
   <!-- =========================================================
-       SCREEN 0: BUSINESS SETUP & LOGIN
+       SCREEN 0: BUSINESS LOGIN & CAC VERIFICATION
+       (Payout bank removed — strictly tax & CAC verification)
        ========================================================= -->
   <div id="auth-gate" class="auth-wrapper">
     <div class="auth-card glass-panel">
@@ -24,17 +25,29 @@
         <div class="freebee-logo-mark">f</div>
         <span class="freebee-wordmark">freebee</span>
       </div>
-      <p class="auth-subtitle">Organize your business sales, scan bank PDF receipts, and keep your FIRS tax records ready automatically.</p>
+      <p class="auth-subtitle">Verify your CAC business details, scan OPay/bank PDF receipts, and keep your FIRS tax records ready automatically.</p>
 
       <form id="onboardingForm" autocomplete="off">
         <div class="form-grid-2">
           <div class="input-group">
-            <label for="regCompanyName">Registered Business Name *</label>
-            <input type="text" id="regCompanyName" required placeholder="e.g., Apex Supplies Ltd">
+            <label for="regCompanyName">Registered Business Name (As on CAC) *</label>
+            <input type="text" id="regCompanyName" required placeholder="e.g., APEX SUPPLIES LTD">
           </div>
           <div class="input-group">
             <label for="regRcNumber">CAC Number (RC or BN) *</label>
-            <input type="text" id="regRcNumber" required placeholder="e.g., RC-1948201">
+            <input type="text" id="regRcNumber" required placeholder="e.g., RC-1948201 or BN-3029182">
+          </div>
+        </div>
+
+        <!-- CAC Verification Box -->
+        <div class="cac-verify-box" id="cacVerifyBox">
+          <div class="cac-verify-info">
+            <span class="mono" id="cacStatusBadge">⚪ CAC NOT VERIFIED YET</span>
+            <p id="cacStatusText">Click "Check CAC Match" to verify your Business Name and RC/BN format before logging in.</p>
+          </div>
+          <div class="cac-verify-actions">
+            <button type="button" id="verifyCacBtn" class="btn-outline-sm">🔍 Check CAC Match</button>
+            <a href="https://icrp.cac.gov.ng/public-search/" target="_blank" rel="noopener" class="cac-ext-link">Official CAC Search ↗</a>
           </div>
         </div>
 
@@ -57,35 +70,24 @@
 
         <div class="form-grid-2">
           <div class="input-group">
-            <label for="regTurnoverTier">Yearly Sales Size *</label>
+            <label for="regTurnoverTier">Yearly Turnover Size *</label>
             <select id="regTurnoverTier" required>
-              <option value="SMALL_EXEMPT">Under ₦100M / year (0% Company Tax)</option>
-              <option value="MEDIUM_STANDARD">Over ₦100M / year (30% Company Tax)</option>
+              <option value="SMALL_EXEMPT">₦100M or below (Small Company — 0% CIT &amp; VAT Exempt)</option>
+              <option value="MEDIUM_STANDARD">Above ₦100M (Standard Company — 30% CIT)</option>
             </select>
           </div>
           <div class="input-group">
-            <label for="regSector">What Do You Mostly Sell? *</label>
+            <label for="regSector">Primary Business Activity *</label>
             <select id="regSector" required>
-              <option value="goods">Physical Goods & Products (2% WHT)</option>
-              <option value="services">Services, Tech & Consulting (5% WHT)</option>
-              <option value="construction">Construction & Contracts (5% WHT)</option>
+              <option value="goods">Physical Goods, Retail &amp; General Trade</option>
+              <option value="services">Services, Tech &amp; Consulting</option>
+              <option value="construction">Construction &amp; Civil Contracts</option>
             </select>
           </div>
         </div>
 
-        <div class="form-grid-2">
-          <div class="input-group">
-            <label for="regBankName">Your Payout Bank *</label>
-            <input type="text" id="regBankName" required placeholder="e.g., GTBank, Zenith, OPay, Moniepoint">
-          </div>
-          <div class="input-group">
-            <label for="regAccountNum">10-Digit Account Number *</label>
-            <input type="text" id="regAccountNum" maxlength="10" pattern="\d{10}" required placeholder="e.g., 0123456789">
-          </div>
-        </div>
-
-        <button type="submit" class="btn-silver-primary full-width">
-          Save Business Info & Open Dashboard &rarr;
+        <button type="submit" id="loginSubmitBtn" class="btn-silver-primary full-width">
+          Verify &amp; Open Tax Workspace &rarr;
         </button>
       </form>
     </div>
@@ -114,7 +116,7 @@
           </button>
           <button class="nav-item" data-view="escrow">
             <span class="nav-icon">▤</span>
-            <span class="nav-text">Invoices & Deals</span>
+            <span class="nav-text">Invoices &amp; Sales</span>
             <span class="nav-counter" id="navEscrowCount">0</span>
           </button>
           <button class="nav-item" data-view="tax">
@@ -130,7 +132,7 @@
           <div class="chip-meta mono" id="sidebarTin">TIN: —</div>
         </div>
         <button id="resetProfileBtn" class="btn-ghost-danger">
-          Edit Business Info
+          Switch / Edit Business
         </button>
       </div>
     </aside>
@@ -140,7 +142,7 @@
       <header class="viewport-header">
         <div>
           <h1 id="viewHeaderTitle">Business Overview</h1>
-          <p id="viewHeaderSub" class="text-muted">See your sales, invoices, and monthly tax numbers at a glance.</p>
+          <p id="viewHeaderSub" class="text-muted">See your recorded sales, small company exemption status, and tax numbers at a glance.</p>
         </div>
         <div class="header-badges">
           <span class="pill-silver mono" id="headerRcBadge">RC: —</span>
@@ -150,30 +152,32 @@
 
       <!-- SCREEN 1: DASHBOARD -->
       <section id="view-dashboard" class="view-section">
+
+        <!-- First-time user walkthrough card -->
         <div id="walkthroughBanner" class="walkthrough-card glass-panel">
           <div class="walkthrough-head">
             <div>
-              <span class="walkthrough-badge">👋 WELCOME TO FREEBEE</span>
-              <h3>How to get your tax records ready in 3 simple steps</h3>
+              <span class="walkthrough-badge">👋 HOW FREEBEE WORKS</span>
+              <h3>Protect your Small Company 0% Tax Exemption in 3 steps</h3>
             </div>
-            <button type="button" id="dismissWalkthroughBtn" class="btn-outline-sm">Hide Guide</button>
+            <button type="button" id="dismissWalkthroughBtn" class="btn-outline-sm">Hide Intro</button>
           </div>
 
           <div class="walkthrough-grid">
             <div class="walkthrough-step">
               <div class="step-num mono">01</div>
-              <h4>Upload an OPay / Bank PDF Receipt</h4>
-              <p>Upload a PDF receipt on the <strong>Add Sale / PDF</strong> page and our scanner will pull the numbers automatically.</p>
+              <h4>Record Sales or Scan OPay PDFs</h4>
+              <p>Upload your OPay/bank PDF receipts on the <strong>Add Sale / PDF</strong> page or type in your sales manually.</p>
             </div>
             <div class="walkthrough-step">
               <div class="step-num mono">02</div>
-              <h4>Automatic VAT & WHT Math</h4>
-              <p>We automatically separate 7.5% VAT and track the 2% or 5% Withholding Tax (WHT) corporate buyers deduct.</p>
+              <h4>Track Your ₦100M Exemption</h4>
+              <p>If your yearly turnover stays at <strong>₦100M or below</strong>, you pay 0% CIT, 0% Development Levy, and don't need to charge VAT.</p>
             </div>
             <div class="walkthrough-step">
               <div class="step-num mono">03</div>
-              <h4>Download Your FIRS Spreadsheet</h4>
-              <p>At month-end, go to <strong>Tax Records</strong> and download a clean CSV file ready for FIRS TaxPro Max.</p>
+              <h4>Download CSV &amp; File on TaxPro Max</h4>
+              <p>Filing is how you prove you qualify as a small company. Download your CSV in <strong>Tax Records</strong> and upload it to TaxPro Max.</p>
             </div>
           </div>
 
@@ -181,39 +185,42 @@
             <button type="button" class="btn-silver-primary" id="walkthroughStartBtn">
               + Upload Your First PDF Receipt or Sale &rarr;
             </button>
+            <button type="button" class="btn-outline-sm" id="walkthroughBenefitsBtn">
+              📖 Read Small Company Tax Benefits
+            </button>
           </div>
         </div>
 
         <div class="kpi-grid">
           <div class="kpi-card glass-panel">
-            <span class="kpi-label">Pending Invoices</span>
+            <span class="kpi-label">Unpaid Invoices</span>
             <div class="kpi-value mono" id="kpiEscrowLocked">₦0</div>
-            <span class="kpi-foot" id="kpiEscrowCountLabel">No pending invoices yet</span>
+            <span class="kpi-foot" id="kpiEscrowCountLabel">No unpaid invoices</span>
           </div>
 
           <div class="kpi-card glass-panel">
-            <span class="kpi-label">Completed Sales</span>
+            <span class="kpi-label">Yearly Turnover (Sales)</span>
             <div class="kpi-value mono" id="kpiGrossRevenue">₦0</div>
             <span class="kpi-foot" id="kpiRevenueFoot">Log a sale or PDF to start</span>
           </div>
 
           <div class="kpi-card glass-panel">
-            <span class="kpi-label">VAT Collected (7.5%)</span>
+            <span class="kpi-label">VAT Charged (If Any)</span>
             <div class="kpi-value mono" id="kpiVatLiability">₦0</div>
-            <span class="kpi-foot">Auto-calculated for FIRS</span>
+            <span class="kpi-foot" id="kpiVatFoot">Small companies (≤₦100M) exempt</span>
           </div>
 
           <div class="kpi-card glass-panel">
-            <span class="kpi-label">Your WHT Tax Credits</span>
+            <span class="kpi-label">WHT Credits Deducted</span>
             <div class="kpi-value mono silver-highlight" id="kpiWhtCredits">₦0</div>
-            <span class="kpi-foot">Tax already deducted by buyers</span>
+            <span class="kpi-foot">If a corporate buyer deducted WHT</span>
           </div>
         </div>
 
         <div class="dashboard-split">
           <div class="glass-panel panel-pad">
             <div class="panel-head">
-              <h3>Recent Sales & Receipts</h3>
+              <h3>Recent Sales &amp; Receipts</h3>
               <button class="btn-outline-sm" id="dashNewContractBtn">+ Add Sale or Receipt</button>
             </div>
             <div id="dashboardRecentList"></div>
@@ -222,14 +229,15 @@
           <div class="glass-panel panel-pad">
             <div class="panel-head">
               <h3>Your Business Tax Profile</h3>
-              <button type="button" class="btn-outline-sm" id="showGuideAgainBtn">Show Guide</button>
+              <!-- Tapping Show Guide opens the Small Company Tax Benefits Modal! -->
+              <button type="button" class="btn-silver-sm" id="showGuideAgainBtn">📖 Show Guide</button>
             </div>
             <div class="entity-details-list">
-              <div class="entity-row"><span>Business Name</span><strong id="profLegalName">—</strong></div>
+              <div class="entity-row"><span>Verified Business</span><strong id="profLegalName">—</strong></div>
+              <div class="entity-row"><span>CAC Registration</span><strong class="mono" id="profRc">—</strong></div>
               <div class="entity-row"><span>FIRS Tax ID (TIN)</span><strong class="mono" id="profTin">—</strong></div>
               <div class="entity-row"><span>Tax Office</span><strong id="profState">—</strong></div>
-              <div class="entity-row"><span>Payout Bank</span><strong class="mono" id="profBank">—</strong></div>
-              <div class="entity-row"><span>0% Company Tax Limit</span><strong class="mono" id="profLimitRatio">₦0 / ₦100M</strong></div>
+              <div class="entity-row"><span>Small Company Limit (≤₦100M)</span><strong class="mono" id="profLimitRatio">₦0 / ₦100M</strong></div>
             </div>
             <div class="progress-track">
               <div class="progress-bar-silver" id="profTurnoverBar" style="width: 0%;"></div>
@@ -243,7 +251,7 @@
         <div class="create-layout">
           <div class="glass-panel panel-pad">
             <h3>1. Auto-Fill from an OPay or Bank PDF Receipt</h3>
-            <p class="text-muted sm-gap">Tap below to pick an OPay or bank receipt PDF. Our scanner reads text and images automatically.</p>
+            <p class="text-muted sm-gap">Tap below to pick an OPay or bank receipt PDF from your phone or laptop. Our scanner reads both digital text and receipt images.</p>
 
             <div class="pdf-upload-zone" id="pdfDropZone">
               <input type="file" id="pdfFileInput" accept=".pdf,application/pdf" class="hidden-file-input">
@@ -256,8 +264,8 @@
 
             <hr class="section-divider">
 
-            <h3>2. Sale & Customer Details</h3>
-            <p class="text-muted sm-gap">Review the scanned details or fill them in to log your sale.</p>
+            <h3>2. Sale &amp; Customer Details</h3>
+            <p class="text-muted sm-gap">Review the scanned details or fill them in to record your sale.</p>
 
             <form id="contractForm" autocomplete="off">
               <div class="form-grid-2">
@@ -278,15 +286,15 @@
 
               <div class="form-grid-2">
                 <div class="input-group">
-                  <label for="contractAmount">Price (₦) *</label>
-                  <input type="number" id="contractAmount" min="1" step="any" required placeholder="e.g., 2500000">
+                  <label for="contractAmount">Sale Amount (₦) *</label>
+                  <input type="number" id="contractAmount" min="1" step="any" required placeholder="e.g., 250000">
                 </div>
                 <div class="input-group">
-                  <label for="contractTaxType">Type of Sale (For Tax Rules) *</label>
+                  <label for="contractTaxType">Did the Buyer Deduct WHT?</label>
                   <select id="contractTaxType">
-                    <option value="goods">Goods / Physical Items (2% WHT)</option>
-                    <option value="services">Services / Work Done (5% WHT)</option>
-                    <option value="exempt">Regular Walk-in Sale (No WHT)</option>
+                    <option value="exempt" selected>No WHT Deducted (Small Company Relief / Full Payment)</option>
+                    <option value="goods">Yes — Buyer Deducted 2% WHT (Goods)</option>
+                    <option value="services">Yes — Buyer Deducted 5% WHT (Services)</option>
                   </select>
                 </div>
               </div>
@@ -304,18 +312,18 @@
 
               <div class="control-row">
                 <div>
-                  <h4>Calculate VAT (7.5%) & Withholding Tax</h4>
-                  <p>Automatically separates 7.5% VAT and tracks WHT tax credits for FIRS.</p>
+                  <h4>Add 7.5% VAT to this sale</h4>
+                  <p>Small companies (≤₦100M turnover) do <strong>not</strong> need to charge VAT. Leave this off unless you are over ₦100M or required to charge VAT.</p>
                 </div>
                 <label class="cyber-switch">
-                  <input type="checkbox" id="applyTaxesToggle" checked>
+                  <input type="checkbox" id="applyTaxesToggle">
                   <span class="cyber-slider"></span>
                 </label>
               </div>
 
               <div class="control-row highlight-row" id="escrowMasterRow">
                 <div>
-                  <h4>⛨ Protect this payment with Escrow <span class="coming-soon-tag">Coming Soon</span></h4>
+                  <h4>⛨ Protect this payment with Escrow <span class="coming-soon-tag">Under Construction</span></h4>
                   <p>Hold buyer funds safely until goods are delivered and inspected.</p>
                 </div>
                 <label class="cyber-switch">
@@ -328,40 +336,40 @@
                 <div class="construction-icon">🚧</div>
                 <h4>Escrow Service is Currently Under Construction</h4>
                 <p>We are finalizing our licensed B2B Escrow integration so your buyers and suppliers can transact with 100% protection. <strong>Thank you for your patience!</strong></p>
-                <p class="construction-sub">For now, you can continue logging your sales, generating invoices, and organizing your FIRS Tax Records seamlessly.</p>
+                <p class="construction-sub">For now, you can continue recording your sales and downloading your FIRS TaxPro Max CSV spreadsheets seamlessly.</p>
               </div>
 
               <button type="submit" class="btn-silver-primary full-width" id="submitContractBtn">
-                Save Receipt to Tax Records &rarr;
+                Save Sale to Tax Records &rarr;
               </button>
             </form>
           </div>
 
           <div class="glass-panel panel-pad preview-panel">
-            <h3>Payment Summary</h3>
-            <p class="text-muted sm-gap">See the exact amount and what goes into your tax records.</p>
+            <h3>Payment &amp; Tax Summary</h3>
+            <p class="text-muted sm-gap">How this sale will be recorded in your FIRS TaxPro Max schedule.</p>
 
             <div class="telemetry-list mono">
-              <div class="t-row"><span>Sale Price</span><span id="prevBaseVal">₦0</span></div>
-              <div class="t-row"><span>VAT (7.5%)</span><span id="prevVatVal">+ ₦0</span></div>
-              <div class="t-row"><span>WHT Kept by Buyer (Your Tax Credit)</span><span id="prevWhtVal">- ₦0</span></div>
+              <div class="t-row"><span>Sale Amount</span><span id="prevBaseVal">₦0</span></div>
+              <div class="t-row"><span>VAT (7.5%)</span><span id="prevVatVal">₦0 (Exempt)</span></div>
+              <div class="t-row"><span>WHT Deducted by Buyer</span><span id="prevWhtVal">₦0</span></div>
               <div class="t-row total"><span>Net Amount Received</span><span id="prevNetPayable">₦0</span></div>
             </div>
 
             <div class="mode-indicator" id="previewModeBox">
-              <div class="mode-title" id="previewModeTitle">✓ DIRECT TAX RECORD LOG</div>
-              <p id="previewModeDesc">Saves straight to your FIRS Tax Records as a completed sale.</p>
+              <div class="mode-title" id="previewModeTitle">✓ SMALL COMPANY EXEMPTION ACTIVE</div>
+              <p id="previewModeDesc">Recorded at 0% CIT and 0% VAT. Ready for your TaxPro Max CSV export.</p>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- SCREEN 3: INVOICES & DEALS -->
+      <!-- SCREEN 3: INVOICES & SALES -->
       <section id="view-escrow" class="view-section hidden">
         <div class="glass-panel panel-pad">
           <div class="panel-head">
             <div>
-              <h3>Your Invoices & Logged Deals</h3>
+              <h3>Your Recorded Sales &amp; Invoices</h3>
               <p class="text-muted">View all your logged sales and pending customer invoices. Click "View Details" to mark an unpaid invoice as paid.</p>
             </div>
             <button type="button" class="btn-outline-sm" id="vaultAddSaleBtn">+ Add New Sale</button>
@@ -376,9 +384,9 @@
           <div class="panel-head">
             <div>
               <h3>Your FIRS Tax Records</h3>
-              <p class="text-muted">All completed sales and uploaded receipts are organized here. Download your spreadsheet anytime for FIRS TaxPro Max.</p>
+              <p class="text-muted">Keep recording your sales here &rarr; Download the CSV &rarr; Upload it on TaxPro Max and file (even if the tax is ₦0).</p>
             </div>
-            <button id="downloadTaxCsvBtn" class="btn-silver-primary">&darr; Download Tax Spreadsheet (.CSV)</button>
+            <button id="downloadTaxCsvBtn" class="btn-silver-primary">&darr; Download TaxPro Max CSV</button>
           </div>
 
           <div class="tax-table-wrapper">
@@ -389,9 +397,9 @@
                   <th>Date</th>
                   <th>Customer / Buyer</th>
                   <th>Sale Price</th>
-                  <th>VAT (7.5%)</th>
+                  <th>VAT</th>
                   <th>WHT Credit</th>
-                  <th>Total Received</th>
+                  <th>Net Received</th>
                 </tr>
               </thead>
               <tbody id="taxLedgerTableBody"></tbody>
@@ -403,7 +411,49 @@
     </main>
   </div>
 
-  <!-- DEAL DETAILS POPUP MODAL -->
+  <!-- =========================================================
+       MODAL 1: SMALL COMPANY TAX BENEFITS GUIDE (Triggered by "Show Guide")
+       ========================================================= -->
+  <div id="taxGuideModal" class="modal-backdrop hidden">
+    <div class="modal-card glass-panel">
+      <div class="modal-top">
+        <div class="modal-title-wrap">
+          <span class="walkthrough-badge">🇳🇬 NIGERIA TAX ACT GUIDE</span>
+          <h3>Small Company Tax Benefits</h3>
+        </div>
+        <button type="button" id="closeGuideTopBtn" class="btn-close-pill">✕ Close</button>
+      </div>
+
+      <div class="guide-modal-body">
+        <p class="guide-lead">If your yearly turnover stays at <strong>₦100 million or below</strong>, you can enjoy:</p>
+        <ul class="guide-list">
+          <li><strong>No need to charge VAT</strong> on your sales</li>
+          <li><strong>Exempt from 4% Development Levy</strong></li>
+          <li><strong>Relief from certain Withholding Tax (WHT)</strong> deductions</li>
+          <li><strong>0% Company Income Tax (CIT)</strong></li>
+        </ul>
+
+        <div class="guide-callout amber">
+          <h4>⚠️ Important:</h4>
+          <p>These benefits only apply if you <strong>file your tax returns</strong>. Filing is how you prove you qualify as a small company.</p>
+        </div>
+
+        <div class="guide-callout cyan">
+          <h4>🛡️ How freebee helps:</h4>
+          <p>Keep recording your sales here &rarr; <strong>Download the CSV</strong> &rarr; Upload it on <strong>TaxPro Max</strong> and file (even if the tax is ₦0).</p>
+          <p style="margin-top:6px; font-weight:600; color:#f8fafc;">That’s all you need to protect these exemptions.</p>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" id="closeGuideBottomBtn" class="btn-silver-primary full-width">Got It, Let's Record Sales</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       MODAL 2: SALE / INVOICE DETAILS POPUP
+       ========================================================= -->
   <div id="escrowModal" class="modal-backdrop hidden">
     <div class="modal-card glass-panel" id="modalCardBox">
       <div class="modal-top">
