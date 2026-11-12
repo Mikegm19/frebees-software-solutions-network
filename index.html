@@ -17,12 +17,13 @@
 
   <!-- =========================================================
        SCREEN 0: BUSINESS LOGIN & CAC VERIFICATION
-       (Payout bank removed — strictly tax & CAC verification)
+       (Secret Admin Trigger: Tap the 'f' logo mark 5 times fast)
        ========================================================= -->
   <div id="auth-gate" class="auth-wrapper">
     <div class="auth-card glass-panel">
       <div class="brand-header">
-        <div class="freebee-logo-mark">f</div>
+        <!-- Tapping this 'f' icon 5 times rapidly opens the hidden Admin Passkey prompt -->
+        <div class="freebee-logo-mark" id="secretAdminLogoTrigger" title="freebee">f</div>
         <span class="freebee-wordmark">freebee</span>
       </div>
       <p class="auth-subtitle">Verify your CAC business details, scan OPay/bank PDF receipts, and keep your FIRS tax records ready automatically.</p>
@@ -39,11 +40,11 @@
           </div>
         </div>
 
-        <!-- CAC Verification Box -->
+        <!-- CAC VERIFICATION BOX -->
         <div class="cac-verify-box" id="cacVerifyBox">
           <div class="cac-verify-info">
-            <span class="mono" id="cacStatusBadge">⚪ CAC NOT VERIFIED YET</span>
-            <p id="cacStatusText">Click "Check CAC Match" to verify your Business Name and RC/BN format before logging in.</p>
+            <span class="mono cac-badge" id="cacStatusBadge">⚪ CAC NOT VERIFIED YET</span>
+            <p id="cacStatusText">Click "Check CAC Match" to validate your Business Name and RC/BN format before logging in.</p>
           </div>
           <div class="cac-verify-actions">
             <button type="button" id="verifyCacBtn" class="btn-outline-sm">🔍 Check CAC Match</button>
@@ -108,7 +109,7 @@
         <nav class="nav-menu">
           <button class="nav-item active" data-view="dashboard">
             <span class="nav-icon">◈</span>
-            <span class="nav-text">Overview</span>
+            <span class="nav-text">Dashboard</span>
           </button>
           <button class="nav-item" data-view="create">
             <span class="nav-icon">＋</span>
@@ -132,7 +133,7 @@
           <div class="chip-meta mono" id="sidebarTin">TIN: —</div>
         </div>
         <button id="resetProfileBtn" class="btn-ghost-danger">
-          Switch / Edit Business
+          Log Out / Switch Business
         </button>
       </div>
     </aside>
@@ -141,10 +142,16 @@
 
       <header class="viewport-header">
         <div>
-          <h1 id="viewHeaderTitle">Business Overview</h1>
-          <p id="viewHeaderSub" class="text-muted">See your recorded sales, small company exemption status, and tax numbers at a glance.</p>
+          <h1 id="viewHeaderTitle">Dashboard</h1>
+          <p id="viewHeaderSub" class="text-muted">Live sales summary and FIRS tax position.</p>
         </div>
         <div class="header-badges">
+          <!-- Appears ONLY when authenticated via the secret Admin Passkey -->
+          <div id="adminToolbar" class="admin-toolbar hidden">
+            <span class="pill-admin mono">⚡ ADMIN</span>
+            <button type="button" id="adminSeedDataBtn" class="btn-outline-sm">+ Load Test Data</button>
+            <button type="button" id="adminClearDataBtn" class="btn-outline-sm">Clear Sales</button>
+          </div>
           <span class="pill-silver mono" id="headerRcBadge">RC: —</span>
           <span class="pill-emerald" id="headerCitBadge">0% CIT Tier</span>
         </div>
@@ -152,45 +159,6 @@
 
       <!-- SCREEN 1: DASHBOARD -->
       <section id="view-dashboard" class="view-section">
-
-        <!-- First-time user walkthrough card -->
-        <div id="walkthroughBanner" class="walkthrough-card glass-panel">
-          <div class="walkthrough-head">
-            <div>
-              <span class="walkthrough-badge">👋 HOW FREEBEE WORKS</span>
-              <h3>Protect your Small Company 0% Tax Exemption in 3 steps</h3>
-            </div>
-            <button type="button" id="dismissWalkthroughBtn" class="btn-outline-sm">Hide Intro</button>
-          </div>
-
-          <div class="walkthrough-grid">
-            <div class="walkthrough-step">
-              <div class="step-num mono">01</div>
-              <h4>Record Sales or Scan OPay PDFs</h4>
-              <p>Upload your OPay/bank PDF receipts on the <strong>Add Sale / PDF</strong> page or type in your sales manually.</p>
-            </div>
-            <div class="walkthrough-step">
-              <div class="step-num mono">02</div>
-              <h4>Track Your ₦100M Exemption</h4>
-              <p>If your yearly turnover stays at <strong>₦100M or below</strong>, you pay 0% CIT, 0% Development Levy, and don't need to charge VAT.</p>
-            </div>
-            <div class="walkthrough-step">
-              <div class="step-num mono">03</div>
-              <h4>Download CSV &amp; File on TaxPro Max</h4>
-              <p>Filing is how you prove you qualify as a small company. Download your CSV in <strong>Tax Records</strong> and upload it to TaxPro Max.</p>
-            </div>
-          </div>
-
-          <div class="walkthrough-cta">
-            <button type="button" class="btn-silver-primary" id="walkthroughStartBtn">
-              + Upload Your First PDF Receipt or Sale &rarr;
-            </button>
-            <button type="button" class="btn-outline-sm" id="walkthroughBenefitsBtn">
-              📖 Read Small Company Tax Benefits
-            </button>
-          </div>
-        </div>
-
         <div class="kpi-grid">
           <div class="kpi-card glass-panel">
             <span class="kpi-label">Unpaid Invoices</span>
@@ -207,7 +175,7 @@
           <div class="kpi-card glass-panel">
             <span class="kpi-label">VAT Charged (If Any)</span>
             <div class="kpi-value mono" id="kpiVatLiability">₦0</div>
-            <span class="kpi-foot" id="kpiVatFoot">Small companies (≤₦100M) exempt</span>
+            <span class="kpi-foot">Small companies (≤₦100M) exempt</span>
           </div>
 
           <div class="kpi-card glass-panel">
@@ -229,7 +197,6 @@
           <div class="glass-panel panel-pad">
             <div class="panel-head">
               <h3>Your Business Tax Profile</h3>
-              <!-- Tapping Show Guide opens the Small Company Tax Benefits Modal! -->
               <button type="button" class="btn-silver-sm" id="showGuideAgainBtn">📖 Show Guide</button>
             </div>
             <div class="entity-details-list">
@@ -313,7 +280,7 @@
               <div class="control-row">
                 <div>
                   <h4>Add 7.5% VAT to this sale</h4>
-                  <p>Small companies (≤₦100M turnover) do <strong>not</strong> need to charge VAT. Leave this off unless you are over ₦100M or required to charge VAT.</p>
+                  <p>Small companies (≤₦100M turnover) do <strong>not</strong> need to charge VAT. Leave this off unless you are over ₦100M.</p>
                 </div>
                 <label class="cyber-switch">
                   <input type="checkbox" id="applyTaxesToggle">
@@ -412,7 +379,7 @@
   </div>
 
   <!-- =========================================================
-       MODAL 1: SMALL COMPANY TAX BENEFITS GUIDE (Triggered by "Show Guide")
+       MODAL 1: SMALL COMPANY TAX BENEFITS GUIDE ("Show Guide")
        ========================================================= -->
   <div id="taxGuideModal" class="modal-backdrop hidden">
     <div class="modal-card glass-panel">
@@ -427,26 +394,26 @@
       <div class="guide-modal-body">
         <p class="guide-lead">If your yearly turnover stays at <strong>₦100 million or below</strong>, you can enjoy:</p>
         <ul class="guide-list">
-          <li><strong>No need to charge VAT</strong> on your sales</li>
+          <li><strong>No need to charge VAT</strong></li>
           <li><strong>Exempt from 4% Development Levy</strong></li>
-          <li><strong>Relief from certain Withholding Tax (WHT)</strong> deductions</li>
-          <li><strong>0% Company Income Tax (CIT)</strong></li>
+          <li><strong>Relief from certain Withholding Tax (WHT)</strong></li>
+          <li><strong>0% Company Income Tax</strong></li>
         </ul>
 
         <div class="guide-callout amber">
-          <h4>⚠️ Important:</h4>
-          <p>These benefits only apply if you <strong>file your tax returns</strong>. Filing is how you prove you qualify as a small company.</p>
+          <h4>Important:</h4>
+          <p>These benefits only apply if you file your tax returns. Filing is how you prove you qualify as a small company.</p>
         </div>
 
         <div class="guide-callout cyan">
-          <h4>🛡️ How freebee helps:</h4>
-          <p>Keep recording your sales here &rarr; <strong>Download the CSV</strong> &rarr; Upload it on <strong>TaxPro Max</strong> and file (even if the tax is ₦0).</p>
+          <h4>How freebee helps:</h4>
+          <p>Keep recording your sales here &rarr; Download the CSV &rarr; Upload it on TaxPro Max and file (even if the tax is ₦0).</p>
           <p style="margin-top:6px; font-weight:600; color:#f8fafc;">That’s all you need to protect these exemptions.</p>
         </div>
       </div>
 
       <div class="modal-footer">
-        <button type="button" id="closeGuideBottomBtn" class="btn-silver-primary full-width">Got It, Let's Record Sales</button>
+        <button type="button" id="closeGuideBottomBtn" class="btn-silver-primary full-width">Got It</button>
       </div>
     </div>
   </div>
@@ -469,6 +436,31 @@
       <div class="modal-footer">
         <button type="button" id="closeModalBottomBtn" class="btn-outline-sm full-width">Close Window</button>
       </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       MODAL 3: HIDDEN ADMIN PASSKEY GATE
+       Only opens when you tap the 'f' logo 5 times or press Ctrl+Shift+A
+       ========================================================= -->
+  <div id="adminAuthModal" class="modal-backdrop hidden">
+    <div class="modal-card glass-panel" style="max-width: 400px;">
+      <div class="modal-top">
+        <div class="modal-title-wrap">
+          <span class="walkthrough-badge">🔒 RESTRICTED ACCESS</span>
+          <h3>Developer / Admin Login</h3>
+        </div>
+        <button type="button" id="closeAdminModalBtn" class="btn-close-pill">✕</button>
+      </div>
+
+      <form id="adminAuthForm" autocomplete="off">
+        <div class="input-group">
+          <label for="adminPasskeyInput">Enter Admin Passkey</label>
+          <input type="password" id="adminPasskeyInput" required placeholder="••••••••••••" class="mono">
+          <p id="adminAuthError" class="hidden" style="color:#f87171; font-size:0.78rem; margin-top:6px;">❌ Invalid passkey.</p>
+        </div>
+        <button type="submit" class="btn-silver-primary full-width">Unlock Admin Workspace &rarr;</button>
+      </form>
     </div>
   </div>
 
