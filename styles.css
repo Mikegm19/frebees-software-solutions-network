@@ -1,3 +1,6 @@
+:/* =========================================================
+   1. COLOR VARIABLES & BASE RESET
+   ========================================================= */
 :root {
   --bg-obsidian: #06080d;
   --bg-elevated: rgba(14, 19, 30, 0.82);
@@ -31,6 +34,9 @@ body {
 .mono { font-family: 'JetBrains Mono', monospace; }
 .hidden { display: none !important; }
 
+/* =========================================================
+   2. THE "freebee" SILVER BRAND IDENTITY
+   ========================================================= */
 .brand-header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
 
 .freebee-logo-mark {
@@ -43,7 +49,7 @@ body {
   line-height: 0.82; letter-spacing: -0.06em;
   color: transparent; background-image: var(--silver-gradient);
   -webkit-background-clip: text; background-clip: text;
-  user-select: none; position: relative;
+  user-select: none; position: relative; cursor: pointer;
 }
 
 .freebee-logo-mark::after {
@@ -57,9 +63,12 @@ body {
   color: transparent; filter: drop-shadow(0 2px 10px rgba(255, 255, 255, 0.08));
 }
 
-.freebee-logo-mark.sm { width: 34px; height: 34px; font-size: 1.75rem; border-radius: 9px; }
+.freebee-logo-mark.sm { width: 34px; height: 34px; font-size: 1.75rem; border-radius: 9px; cursor: default; }
 .freebee-wordmark.sm { font-size: 1.55rem; }
 
+/* =========================================================
+   3. GLASS PANELS, CAC BOX (OVERFLOW FIXED) & ADMIN TOOLBAR
+   ========================================================= */
 .glass-panel {
   background: var(--bg-elevated);
   backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
@@ -73,48 +82,57 @@ body {
 .sm-gap { margin-bottom: 16px; }
 .section-divider { border: none; border-top: 1px solid var(--border-subtle); margin: 22px 0; }
 
-/* CAC Verification Box on Login */
+/* CAC Verification Box — Vertical stack with strict word wrapping */
 .cac-verify-box {
+  width: 100%;
   background: rgba(255, 255, 255, 0.025);
   border: 1px solid var(--border-specular);
   border-radius: 12px;
   padding: 14px 16px;
   margin-bottom: 18px;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 14px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  overflow: hidden;
 }
 
-.cac-verify-info { flex: 1; min-width: 210px; }
-.cac-verify-info span { font-size: 0.75rem; font-weight: 700; display: block; margin-bottom: 4px; color: #cbd5e1; }
-.cac-verify-info p { font-size: 0.78rem; color: var(--text-secondary); line-height: 1.4; }
-.cac-verify-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.cac-ext-link { font-size: 0.76rem; color: var(--accent-cyan); text-decoration: none; font-weight: 600; }
+.cac-verify-info { width: 100%; min-width: 0; }
+
+.cac-badge {
+  font-size: 0.75rem; font-weight: 700; display: block; margin-bottom: 4px;
+  color: #cbd5e1; word-break: break-word; overflow-wrap: anywhere;
+}
+
+.cac-verify-info p {
+  font-size: 0.8rem; color: var(--text-secondary); line-height: 1.45;
+  word-break: break-word; overflow-wrap: anywhere;
+}
+
+.cac-verify-actions {
+  width: 100%; display: flex; align-items: center;
+  justify-content: space-between; gap: 10px; flex-wrap: wrap;
+}
+
+.cac-ext-link { font-size: 0.76rem; color: var(--accent-cyan); text-decoration: none; font-weight: 600; white-space: nowrap; }
 .cac-ext-link:hover { text-decoration: underline; }
 
-/* Walkthrough Card */
-.walkthrough-card {
-  padding: 24px; margin-bottom: 24px;
-  border: 1px solid rgba(56, 189, 248, 0.35);
-  background: linear-gradient(145deg, rgba(15, 23, 42, 0.9) 0%, rgba(9, 13, 22, 0.95) 100%);
+/* Admin Toolbar in Header */
+.admin-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.pill-admin {
+  background: rgba(56, 189, 248, 0.14); border: 1px solid rgba(56, 189, 248, 0.4);
+  color: #38bdf8; padding: 5px 10px; border-radius: 99px; font-size: 0.72rem; font-weight: 700;
 }
 
-.walkthrough-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+/* =========================================================
+   4. TAX BENEFITS GUIDE MODAL & PDF DROPZONE
+   ========================================================= */
 .walkthrough-badge {
   display: inline-block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.08em;
   color: var(--accent-cyan); background: rgba(56, 189, 248, 0.12); padding: 4px 10px; border-radius: 99px; margin-bottom: 6px;
 }
-.walkthrough-head h3 { font-size: 1.15rem; font-weight: 800; }
-.walkthrough-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
-.walkthrough-step { background: rgba(255, 255, 255, 0.025); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 16px; }
-.step-num { font-size: 0.78rem; font-weight: 800; color: var(--accent-cyan); margin-bottom: 6px; }
-.walkthrough-step h4 { font-size: 0.92rem; margin-bottom: 6px; }
-.walkthrough-step p { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.45; }
-.walkthrough-cta { display: flex; gap: 12px; flex-wrap: wrap; }
 
-/* Tax Benefits Guide Modal Styling */
 .guide-modal-body { font-size: 0.9rem; line-height: 1.55; color: var(--text-primary); }
 .guide-lead { margin-bottom: 12px; color: #e2e8f0; }
 .guide-list { margin: 0 0 18px 20px; color: #cbd5e1; }
@@ -151,13 +169,16 @@ body {
 .under-construction-box p { font-size: 0.82rem; color: var(--text-primary); line-height: 1.45; margin-bottom: 6px; }
 .construction-sub { color: var(--text-secondary) !important; font-size: 0.76rem !important; }
 
+/* =========================================================
+   5. AUTH CARD, INPUTS & BUTTONS
+   ========================================================= */
 .auth-wrapper { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
-.auth-card { width: 100%; max-width: 660px; padding: 36px; border: 1px solid var(--border-specular); }
+.auth-card { width: 100%; max-width: 660px; padding: 34px; border: 1px solid var(--border-specular); }
 .auth-subtitle { color: var(--text-secondary); font-size: 0.92rem; margin-bottom: 24px; }
 .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.input-group { margin-bottom: 16px; }
+.input-group { margin-bottom: 16px; min-width: 0; }
 label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 7px; }
-input[type="text"], input[type="number"], select {
+input[type="text"], input[type="number"], input[type="password"], select {
   width: 100%; padding: 12px 14px; background: rgba(9, 13, 22, 0.85);
   border: 1px solid var(--border-subtle); border-radius: 10px; color: var(--text-primary); font-size: 0.92rem; outline: none; transition: all 0.2s ease;
 }
@@ -177,7 +198,7 @@ input:focus, select:focus { border-color: #cbd5e1; box-shadow: 0 0 0 3px rgba(20
 
 .btn-outline-sm {
   background: rgba(255, 255, 255, 0.04); color: var(--text-primary); border: 1px solid var(--border-specular);
-  padding: 9px 14px; border-radius: 8px; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: 0.2s;
+  padding: 8px 13px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: 0.2s;
 }
 .btn-outline-sm:hover { background: rgba(255, 255, 255, 0.12); }
 
@@ -187,6 +208,9 @@ input:focus, select:focus { border-color: #cbd5e1; box-shadow: 0 0 0 3px rgba(20
 }
 .full-width { width: 100%; margin-top: 8px; }
 
+/* =========================================================
+   6. WORKSPACE LAYOUT, SIDEBAR & KPI GRID
+   ========================================================= */
 .workspace-shell { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
 .sidebar {
   border-radius: 0; border-top: none; border-bottom: none; border-left: none; padding: 28px 18px;
@@ -208,7 +232,7 @@ input:focus, select:focus { border-color: #cbd5e1; box-shadow: 0 0 0 3px rgba(20
 .main-viewport { padding: 32px 40px; max-width: 1280px; width: 100%; margin: 0 auto; }
 .viewport-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; gap: 16px; flex-wrap: wrap; }
 .viewport-header h1 { font-size: 1.65rem; font-weight: 800; letter-spacing: -0.02em; }
-.header-badges { display: flex; gap: 10px; align-items: center; }
+.header-badges { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
 .pill-silver { background: rgba(255, 255, 255, 0.06); border: 1px solid var(--border-specular); padding: 6px 12px; border-radius: 99px; font-size: 0.76rem; color: #e2e8f0; }
 .pill-emerald { background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.35); color: #34d399; padding: 6px 12px; border-radius: 99px; font-size: 0.76rem; font-weight: 600; }
@@ -234,6 +258,9 @@ input:focus, select:focus { border-color: #cbd5e1; box-shadow: 0 0 0 3px rgba(20
 .empty-box h4 { color: var(--text-primary); font-size: 0.98rem; margin-bottom: 6px; }
 .empty-box p { color: var(--text-secondary); font-size: 0.82rem; max-width: 420px; margin: 0 auto 14px; line-height: 1.45; }
 
+/* =========================================================
+   7. CREATE SALE, LISTS, TABLES & MODALS
+   ========================================================= */
 .create-layout { display: grid; grid-template-columns: 1.45fr 1fr; gap: 22px; align-items: start; }
 .control-row {
   display: flex; justify-content: space-between; align-items: center; padding: 14px 16px;
@@ -292,6 +319,9 @@ input:focus, select:focus { border-color: #cbd5e1; box-shadow: 0 0 0 3px rgba(20
 .modal-footer { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border-subtle); }
 .va-terminal { background: rgba(0, 0, 0, 0.45); border: 1px dashed var(--border-specular); border-radius: 12px; padding: 16px; text-align: center; margin: 14px 0; }
 
+/* =========================================================
+   8. MOBILE & TABLET RESPONSIVENESS
+   ========================================================= */
 @media (max-width: 960px) {
   .workspace-shell { grid-template-columns: 1fr; padding-bottom: 85px; }
   .sidebar {
@@ -304,5 +334,6 @@ input:focus, select:focus { border-color: #cbd5e1; box-shadow: 0 0 0 3px rgba(20
   .nav-counter { display: none; }
   .main-viewport { padding: 20px 16px; }
   .kpi-grid { grid-template-columns: 1fr 1fr; }
-  .walkthrough-grid, .dashboard-split, .create-layout, .form-grid-2 { grid-template-columns: 1fr; }
+  .dashboard-split, .create-layout, .form-grid-2 { grid-template-columns: 1fr; }
+  .auth-card { padding: 22px 18px; }
 }
