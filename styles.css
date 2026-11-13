@@ -1,9 +1,6 @@
-:/* =========================================================
-   1. COLOR VARIABLES & BASE RESET
-   ========================================================= */
 :root {
   --bg-obsidian: #06080d;
-  --bg-elevated: rgba(14, 19, 30, 0.82);
+  --bg-elevated: rgba(14, 19, 30, 0.85);
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-specular: rgba(226, 232, 240, 0.24);
   --text-primary: #f8fafc;
@@ -19,12 +16,12 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
-body {
-  background-color: var(--bg-obsidian);
+html, body {
+  background-color: #06080d !important;
   background-image: 
     radial-gradient(circle at 15% 10%, rgba(148, 163, 184, 0.07) 0%, transparent 40%),
     radial-gradient(circle at 85% 85%, rgba(56, 189, 248, 0.04) 0%, transparent 40%);
-  color: var(--text-primary);
+  color: #f8fafc !important;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   min-height: 100vh;
   overflow-x: hidden;
@@ -34,9 +31,6 @@ body {
 .mono { font-family: 'JetBrains Mono', monospace; }
 .hidden { display: none !important; }
 
-/* =========================================================
-   2. THE "freebee" SILVER BRAND IDENTITY
-   ========================================================= */
 .brand-header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
 
 .freebee-logo-mark {
@@ -66,9 +60,6 @@ body {
 .freebee-logo-mark.sm { width: 34px; height: 34px; font-size: 1.75rem; border-radius: 9px; cursor: default; }
 .freebee-wordmark.sm { font-size: 1.55rem; }
 
-/* =========================================================
-   3. GLASS PANELS, CAC BOX (OVERFLOW FIXED) & ADMIN TOOLBAR
-   ========================================================= */
 .glass-panel {
   background: var(--bg-elevated);
   backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
@@ -82,10 +73,9 @@ body {
 .sm-gap { margin-bottom: 16px; }
 .section-divider { border: none; border-top: 1px solid var(--border-subtle); margin: 22px 0; }
 
-/* CAC Verification Box — Vertical stack with strict word wrapping */
 .cac-verify-box {
   width: 100%;
-  background: rgba(255, 255, 255, 0.025);
+  background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--border-specular);
   border-radius: 12px;
   padding: 14px 16px;
@@ -117,7 +107,6 @@ body {
 .cac-ext-link { font-size: 0.76rem; color: var(--accent-cyan); text-decoration: none; font-weight: 600; white-space: nowrap; }
 .cac-ext-link:hover { text-decoration: underline; }
 
-/* Admin Toolbar in Header */
 .admin-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
 .pill-admin {
@@ -125,9 +114,6 @@ body {
   color: #38bdf8; padding: 5px 10px; border-radius: 99px; font-size: 0.72rem; font-weight: 700;
 }
 
-/* =========================================================
-   4. TAX BENEFITS GUIDE MODAL & PDF DROPZONE
-   ========================================================= */
 .walkthrough-badge {
   display: inline-block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.08em;
   color: var(--accent-cyan); background: rgba(56, 189, 248, 0.12); padding: 4px 10px; border-radius: 99px; margin-bottom: 6px;
@@ -169,9 +155,6 @@ body {
 .under-construction-box p { font-size: 0.82rem; color: var(--text-primary); line-height: 1.45; margin-bottom: 6px; }
 .construction-sub { color: var(--text-secondary) !important; font-size: 0.76rem !important; }
 
-/* =========================================================
-   5. AUTH CARD, INPUTS & BUTTONS
-   ========================================================= */
 .auth-wrapper { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
 .auth-card { width: 100%; max-width: 660px; padding: 34px; border: 1px solid var(--border-specular); }
 .auth-subtitle { color: var(--text-secondary); font-size: 0.92rem; margin-bottom: 24px; }
@@ -179,10 +162,16 @@ body {
 .input-group { margin-bottom: 16px; min-width: 0; }
 label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 7px; }
 input[type="text"], input[type="number"], input[type="password"], select {
-  width: 100%; padding: 12px 14px; background: rgba(9, 13, 22, 0.85);
+  width: 100%; padding: 12px 14px; background: rgba(9, 13, 22, 0.9);
   border: 1px solid var(--border-subtle); border-radius: 10px; color: var(--text-primary); font-size: 0.92rem; outline: none; transition: all 0.2s ease;
 }
 input:focus, select:focus { border-color: #cbd5e1; box-shadow: 0 0 0 3px rgba(203, 213, 225, 0.12); }
+
+.passkey-wrap { position: relative; display: flex; align-items: center; }
+.passkey-toggle-btn {
+  position: absolute; right: 10px; background: none; border: none;
+  color: var(--text-secondary); font-size: 0.78rem; font-weight: 600; cursor: pointer; padding: 4px 6px;
+}
 
 .btn-silver-primary {
   background: var(--silver-button); color: #06080d; border: none; padding: 13px 20px; border-radius: 10px;
@@ -208,9 +197,6 @@ input:focus, select:focus { border-color: #cbd5e1; box-shadow: 0 0 0 3px rgba(20
 }
 .full-width { width: 100%; margin-top: 8px; }
 
-/* =========================================================
-   6. WORKSPACE LAYOUT, SIDEBAR & KPI GRID
-   ========================================================= */
 .workspace-shell { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
 .sidebar {
   border-radius: 0; border-top: none; border-bottom: none; border-left: none; padding: 28px 18px;
@@ -258,9 +244,6 @@ input:focus, select:focus { border-color: #cbd5e1; box-shadow: 0 0 0 3px rgba(20
 .empty-box h4 { color: var(--text-primary); font-size: 0.98rem; margin-bottom: 6px; }
 .empty-box p { color: var(--text-secondary); font-size: 0.82rem; max-width: 420px; margin: 0 auto 14px; line-height: 1.45; }
 
-/* =========================================================
-   7. CREATE SALE, LISTS, TABLES & MODALS
-   ========================================================= */
 .create-layout { display: grid; grid-template-columns: 1.45fr 1fr; gap: 22px; align-items: start; }
 .control-row {
   display: flex; justify-content: space-between; align-items: center; padding: 14px 16px;
@@ -319,9 +302,6 @@ input:focus, select:focus { border-color: #cbd5e1; box-shadow: 0 0 0 3px rgba(20
 .modal-footer { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border-subtle); }
 .va-terminal { background: rgba(0, 0, 0, 0.45); border: 1px dashed var(--border-specular); border-radius: 12px; padding: 16px; text-align: center; margin: 14px 0; }
 
-/* =========================================================
-   8. MOBILE & TABLET RESPONSIVENESS
-   ========================================================= */
 @media (max-width: 960px) {
   .workspace-shell { grid-template-columns: 1fr; padding-bottom: 85px; }
   .sidebar {
